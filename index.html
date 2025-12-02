@@ -308,7 +308,7 @@
                 4: { label: '已完成', color: 'bg-rose-100 text-rose-700 border-rose-200', icon: <Icons.CheckCircle size={14}/> },
             };
             const WEEKDAYS = ['週日', '週一', '週二', '週三', '週四', '週五', '週六'];
-            const WEEKDAYS_SIMPLE = ['日', '一', '二', '三', '四', '五', '六'];
+            const WEEKDAYS_SIMPLE = ['(日)', '(一)', '(二)', '(三)', '(四)', '(五)', '(六)'];
             const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
             const MINUTES = ['00', '15', '30', '45'];
             
@@ -324,7 +324,22 @@
             const getFirstDayOfMonth = (y, m) => new Date(y, m, 1).getDay();
             const getSlotDisplay = (id) => { const s = slots.find(x => x.id == id); return s ? `${s.date} ${s.startTime}-${s.endTime}` : '未知'; };
             const getRequestsBySlotId = (id) => requests.filter(r => r.slotId == id);
-            const getAvailableSlots = () => slots.filter(s => s.type === 'available');
+            
+            // Logic change: Filter out slots that are FULLY booked by a Step 4 request
+            const getAvailableSlots = () => slots.filter(s => {
+                if (s.type !== 'available') return false;
+                
+                // Find all COMPLETED requests for this slot
+                const completedReqs = requests.filter(r => r.slotId == s.id && r.step === 4);
+                
+                // If any completed request covers the ENTIRE slot duration, filter it out
+                const isFullyBooked = completedReqs.some(r => {
+                    // Simple string comparison for HH:mm is safe because of normalization
+                    return r.startTime <= s.startTime && r.endTime >= s.endTime;
+                });
+                
+                return !isFullyBooked;
+            });
 
             return (
                 <div className="min-h-screen flex flex-col max-w-5xl mx-auto shadow-2xl rounded-none sm:rounded-[40px] my-0 sm:my-8 overflow-hidden bg-white/80 backdrop-blur border-4 border-white">
@@ -456,7 +471,7 @@
                                                     <div className="text-sm text-slate-500 flex flex-wrap items-center gap-4 bg-slate-50 p-2 rounded-xl inline-flex mb-2">
                                                         <span className="flex items-center gap-1"><Icons.User size={14} className="text-pink-400"/> <b>{req.requestorName}</b></span>
                                                         <span className="text-slate-300">|</span>
-                                                        <span className="flex items-center gap-1 tabular-nums"><Icons.Calendar size={14} className="text-sky-400"/> <b>{slotDate} ({WEEKDAYS_SIMPLE[new Date(slotDate).getUTCDay()]}) {req.startTime}-{req.endTime}</b></span>
+                                                        <span className="flex items-center gap-1 tabular-nums"><Icons.Calendar size={14} className="text-sky-400"/> <b>{slotDate} {WEEKDAYS_SIMPLE[new Date(slotDate).getUTCDay()]} {req.startTime}-{req.endTime}</b></span>
                                                     </div>
                                                     {req.requestorNote && <div className="text-xs text-slate-500 mt-2 bg-slate-50 p-2 rounded-lg border border-slate-100 flex gap-2"><span className="font-bold text-slate-400">備註:</span> {req.requestorNote}</div>}
                                                 </div>
@@ -483,8 +498,8 @@
                                                 <td className="p-5">
                                                     <div className="flex flex-col gap-1">
                                                         <div className="flex items-baseline gap-2 pl-2">
-                                                            <span className="font-extrabold text-slate-700 text-base tabular-nums tracking-wide">{slot.date}</span>
-                                                            <span className="text-slate-400 text-sm font-bold">({WEEKDAYS_SIMPLE[new Date(slot.date).getUTCDay()]})</span>
+                                                            <span className="font-extrabold text-slate-700 text-base tabular-nums tracking-wide w-[105px]">{slot.date}</span>
+                                                            <span className="text-slate-400 text-sm font-bold">{WEEKDAYS_SIMPLE[new Date(slot.date).getUTCDay()]}</span>
                                                         </div>
                                                         <div className="text-sky-600 font-bold text-sm bg-sky-50 px-2 py-1 rounded-lg w-fit tabular-nums">
                                                             {slot.startTime} - {slot.endTime}
