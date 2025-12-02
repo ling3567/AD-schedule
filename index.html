@@ -49,10 +49,21 @@
         }
         .magic-btn:active { transform: scale(0.92); }
         
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        /* 優化捲軸樣式，避免雙捲軸視覺干擾 */
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: rgba(203, 213, 225, 0.5); border-radius: 20px; }
         
         .tabular-nums { font-variant-numeric: tabular-nums; }
+
+        /* Sticky Header for Groups */
+        .sticky-group-header {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            backdrop-filter: blur(8px);
+            background: rgba(240, 249, 255, 0.95); /* Sky-50 with opacity */
+        }
     </style>
 </head>
 <body class="text-slate-700 relative">
@@ -86,6 +97,8 @@
             Edit: (p) => <Icon {...p} path={<><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></>} />,
             ChevronLeft: (p) => <Icon {...p} path={<polyline points="15 18 9 12 15 6"></polyline>} />,
             ChevronRight: (p) => <Icon {...p} path={<polyline points="9 18 15 12 9 6"></polyline>} />,
+            ChevronDown: (p) => <Icon {...p} path={<polyline points="6 9 12 15 18 9"></polyline>} />,
+            ChevronUp: (p) => <Icon {...p} path={<polyline points="18 15 12 9 6 15"></polyline>} />,
             List: (p) => <Icon {...p} path={<><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></>} />,
             Ban: (p) => <Icon {...p} path={<><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></>} />,
             CornerDownRight: (p) => <Icon {...p} path={<><polyline points="15 10 20 15 15 20"></polyline><path d="M4 4v7a4 4 0 0 0 4 4h12"></path></>} />,
@@ -118,9 +131,11 @@
             
             // Editing State
             const [editingSlotId, setEditingSlotId] = useState(null);
+            
+            // Grouping State (Months collapsed/expanded)
+            const [collapsedMonths, setCollapsedMonths] = useState({});
 
             // Forms
-            // startDate, endDate for Range support
             const [newSlot, setNewSlot] = useState({ startDate: '', endDate: '', startTime: '09:00', endTime: '10:00', note: '', type: 'available' });
             const [newRequest, setNewRequest] = useState({ title: '', slotId: '', requestorNote: '', requestorName: '依玲', startTime: '', endTime: '' });
 
@@ -186,8 +201,26 @@
                 try {
                     const data = await callApi('read', {}, false);
                     if (data) {
-                        setSlots(normalizeData(data.slots || []));
+                        const fetchedSlots = normalizeData(data.slots || []);
+                        setSlots(fetchedSlots);
                         setRequests(normalizeData(data.requests || []));
+                        
+                        const groups = groupSlotsByMonth(fetchedSlots);
+                        const today = new Date();
+                        const currentMonthKey = `${today.getFullYear()}年 ${today.getMonth() + 1}月`;
+                        
+                        // Find index of current month
+                        const currentIdx = groups.findIndex(g => g.month === currentMonthKey);
+                        
+                        if (currentIdx > -1) {
+                             const newCollapsed = {};
+                             groups.forEach((g, idx) => {
+                                 if (idx < currentIdx) {
+                                     newCollapsed[g.month] = true;
+                                 }
+                             });
+                             setCollapsedMonths(prev => ({...newCollapsed, ...prev}));
+                        }
                         setError('');
                     }
                 } catch (e) { console.error("Refresh failed:", e); }
@@ -198,8 +231,25 @@
                     setIsLoading(true);
                     callApi('read', {}, false).then(data => {
                         if(data) {
-                            setSlots(normalizeData(data.slots || []));
+                            const fetchedSlots = normalizeData(data.slots || []);
+                            setSlots(fetchedSlots);
                             setRequests(normalizeData(data.requests || []));
+                            
+                            const groups = groupSlotsByMonth(fetchedSlots);
+                            const today = new Date();
+                            const currentMonthKey = `${today.getFullYear()}年 ${today.getMonth() + 1}月`;
+                            const newCollapsed = {};
+                            
+                            const sortedGroups = groups; 
+                            const currentIdx = sortedGroups.findIndex(g => g.month === currentMonthKey);
+                            
+                            sortedGroups.forEach((g, idx) => {
+                                const [gY, gM] = g.month.replace('年 ', '-').replace('月', '').split('-').map(Number);
+                                if (gY < today.getFullYear() || (gY === today.getFullYear() && gM < today.getMonth() + 1)) {
+                                    newCollapsed[g.month] = true;
+                                }
+                            });
+                            setCollapsedMonths(newCollapsed);
                         }
                         setIsLoading(false);
                     }).catch(e => {
@@ -228,61 +278,59 @@
                 return arr;
             };
 
+            const groupSlotsByMonth = (slotsList) => {
+                const groups = {};
+                slotsList.forEach(slot => {
+                    const d = new Date(slot.date);
+                    if (isNaN(d.getTime())) return;
+                    const key = `${d.getFullYear()}年 ${d.getMonth() + 1}月`;
+                    if (!groups[key]) groups[key] = [];
+                    groups[key].push(slot);
+                });
+                
+                return Object.keys(groups).sort((a, b) => {
+                    const [y1, m1] = a.replace('年 ', '-').replace('月', '').split('-');
+                    const [y2, m2] = b.replace('年 ', '-').replace('月', '').split('-');
+                    return new Date(y1, m1 - 1) - new Date(y2, m2 - 1);
+                }).map(key => ({
+                    month: key,
+                    items: groups[key].sort((a, b) => a.date.localeCompare(b.date))
+                }));
+            };
+
+            const toggleMonthCollapse = (month) => {
+                setCollapsedMonths(prev => ({ ...prev, [month]: !prev[month] }));
+            };
+
             // --- Handlers ---
 
             const handleSaveSlot = async (e) => {
                 e.preventDefault();
-                
                 const originalSlots = [...slots];
-                
                 if (editingSlotId) {
-                    // Update Mode (Single Slot)
-                    const updatedSlot = { 
-                        ...newSlot, 
-                        id: editingSlotId,
-                        date: newSlot.startDate // Use startDate as the date
-                    };
-                    
-                    // Optimistic update
+                    const updatedSlot = { ...newSlot, id: editingSlotId, date: newSlot.startDate };
                     setSlots(prev => prev.map(s => s.id === editingSlotId ? updatedSlot : s));
                     setNewSlot({ startDate: '', endDate: '', startTime: '09:00', endTime: '10:00', note: '', type: 'available' });
                     setEditingSlotId(null);
                     setShowAddSlot(false);
-
-                    try {
-                        await callApi('updateSlot', updatedSlot, false);
-                    } catch (err) {
-                        alert("修改失敗: " + err.message);
-                        setSlots(originalSlots);
-                    }
+                    try { await callApi('updateSlot', updatedSlot, false); } 
+                    catch (err) { alert("修改失敗: " + err.message); setSlots(originalSlots); }
                 } else {
-                    // Add Mode (Supports Range)
                     const dates = getDatesInRange(newSlot.startDate, newSlot.endDate || newSlot.startDate);
-                    
                     const newSlotsData = dates.map(d => ({
                         date: d,
                         startTime: newSlot.startTime,
                         endTime: newSlot.endTime,
                         note: newSlot.note,
                         type: newSlot.type,
-                        id: Date.now() + Math.random() // Temp ID
+                        id: Date.now() + Math.random()
                     }));
-                    
-                    // Optimistic
                     setSlots(prev => [...prev, ...newSlotsData]);
                     setNewSlot({ startDate: '', endDate: '', startTime: '09:00', endTime: '10:00', note: '', type: 'available' });
                     setShowAddSlot(false);
-
                     try {
-                        // Batch API call simulation (looping)
-                        for (const slotData of newSlotsData) {
-                            await callApi('addSlot', slotData, false);
-                        }
-                    } catch (err) {
-                        alert("部分新增失敗，請重新整理確認");
-                        // We don't revert fully here as some might have succeeded
-                        refreshData();
-                    }
+                        for (const slotData of newSlotsData) { await callApi('addSlot', slotData, false); }
+                    } catch (err) { alert("部分新增失敗，請重新整理確認"); refreshData(); }
                 }
             };
 
@@ -290,7 +338,7 @@
                 setEditingSlotId(slot.id);
                 setNewSlot({
                     startDate: slot.date,
-                    endDate: slot.date, // Editing implies single day focus usually
+                    endDate: slot.date, 
                     startTime: slot.startTime,
                     endTime: slot.endTime,
                     note: slot.note,
@@ -302,20 +350,12 @@
             const handleDeleteSlot = async (id) => {
                 if (!id) return;
                 if (!confirm('確定刪除此時段？將一併刪除該時段下所有會議。')) return;
-                
                 const originalSlots = [...slots];
                 const originalRequests = [...requests];
-
                 setSlots(prev => prev.filter(s => s.id !== id));
                 setRequests(prev => prev.filter(r => r.slotId !== id));
-
-                try {
-                    await callApi('deleteSlot', { id }, false);
-                } catch (err) {
-                    alert("刪除失敗: " + err.message);
-                    setSlots(originalSlots);
-                    setRequests(originalRequests);
-                }
+                try { await callApi('deleteSlot', { id }, false); }
+                catch (err) { alert("刪除失敗: " + err.message); setSlots(originalSlots); setRequests(originalRequests); }
             };
 
             const isTimeOverlapping = (slotId, start, end) => {
@@ -330,44 +370,29 @@
                 }
                 const tempId = Date.now();
                 const reqData = { ...newRequest, id: tempId, slotId: parseInt(newRequest.slotId), step: 1, updatedAt: new Date().toISOString() };
-                
                 setRequests(prev => [...prev, reqData]);
                 setNewRequest({ title: '', slotId: '', requestorNote: '', requestorName: '依玲', startTime: '', endTime: '' });
                 setShowAddRequest(false);
                 setActiveTab('dashboard');
-
-                try {
-                    await callApi('addRequest', reqData, false);
-                } catch(err) {
-                    alert("新增失敗: " + err.message);
-                    setRequests(prev => prev.filter(r => r.id !== tempId));
-                }
+                try { await callApi('addRequest', reqData, false); }
+                catch(err) { alert("新增失敗: " + err.message); setRequests(prev => prev.filter(r => r.id !== tempId)); }
             };
 
             const handleUpdateStep = async (reqId, newStep) => {
                 const originalRequests = [...requests];
                 setRequests(prev => prev.map(r => r.id === reqId ? { ...r, step: newStep, updatedAt: new Date().toISOString() } : r));
-                try {
-                    await callApi('updateRequestStep', { id: reqId, step: newStep, updatedAt: new Date().toISOString() }, false);
-                } catch (err) {
-                    console.error("Update step failed", err);
-                    setRequests(originalRequests);
-                }
+                try { await callApi('updateRequestStep', { id: reqId, step: newStep, updatedAt: new Date().toISOString() }, false); }
+                catch (err) { console.error("Update step failed", err); setRequests(originalRequests); }
             };
 
             const handleDeleteRequest = async (id) => {
                 if (!confirm('確定取消此會議安排？')) return;
                 const originalRequests = [...requests];
                 setRequests(prev => prev.filter(r => r.id !== id));
-                try {
-                    await callApi('deleteRequest', { id }, false);
-                } catch (err) {
-                    alert("刪除失敗: " + err.message);
-                    setRequests(originalRequests);
-                }
+                try { await callApi('deleteRequest', { id }, false); }
+                catch (err) { alert("刪除失敗: " + err.message); setRequests(originalRequests); }
             };
 
-            // Toggle Full Day - Set to 00:00 - 23:45 to match dropdown
             const toggleFullDay = () => {
                 if (newSlot.startTime === '00:00' && newSlot.endTime === '23:45') {
                     setNewSlot({ ...newSlot, startTime: '09:00', endTime: '10:00' });
@@ -424,6 +449,8 @@
                 return !hasCompletedReq;
             });
 
+            const groupedSlots = groupSlotsByMonth(slots);
+
             return (
                 <div className="min-h-screen flex flex-col max-w-5xl mx-auto shadow-2xl rounded-none sm:rounded-[40px] my-0 sm:my-8 overflow-hidden bg-white/80 backdrop-blur border-4 border-white">
                     <header className="bg-gradient-to-r from-pink-400 via-purple-400 to-sky-400 text-white p-6 sticky top-0 z-20 flex flex-col sm:flex-row justify-between items-center shadow-lg shadow-purple-100">
@@ -458,8 +485,8 @@
 
                         {/* Modals */}
                         {showAddSlot && (
-                            <div className="fixed inset-0 bg-sky-900/30 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-                                <div className="magic-card p-8 rounded-[40px] shadow-2xl max-w-md w-full animate-fade-in-down">
+                            <div className="fixed inset-0 bg-sky-900/30 z-50 flex items-center justify-center p-4 backdrop-blur-sm overflow-y-auto">
+                                <div className="magic-card p-8 rounded-[40px] shadow-2xl max-w-md w-full animate-fade-in-down my-8">
                                     <h3 className="font-bold text-2xl mb-6 flex items-center gap-3 text-slate-700">
                                         <span className="bg-sky-100 p-2 rounded-full text-sky-500"><Icons.Plus size={24}/></span> {editingSlotId ? '修改時段' : '新增時段'}
                                     </h3>
@@ -469,7 +496,7 @@
                                             <button type="button" onClick={() => setNewSlot({...newSlot, type: 'occupied'})} className={`flex-1 py-3 rounded-full font-bold flex gap-2 justify-center transition-all ${newSlot.type === 'occupied' ? 'bg-white text-rose-500 shadow-md' : 'text-slate-400'}`}><Icons.Ban size={18}/> 已佔用</button>
                                         </div>
                                         
-                                        <div className="flex items-center gap-3">
+                                        <div className="flex flex-col sm:flex-row gap-3">
                                             <div className="flex-1">
                                                 <label className="text-sm font-bold text-slate-500 ml-2 mb-1 block">開始日期</label>
                                                 <input type="date" required className="w-full p-3 border-2 border-sky-100 rounded-2xl bg-sky-50/30 outline-none focus:border-pink-300 font-bold text-slate-700" 
@@ -478,31 +505,26 @@
                                                 />
                                             </div>
                                             {!editingSlotId && (
-                                                <>
-                                                    <div className="pt-6"><Icons.ArrowRight size={20} className="text-slate-300"/></div>
-                                                    <div className="flex-1">
-                                                        <label className="text-sm font-bold text-slate-500 ml-2 mb-1 block">結束日期</label>
-                                                        <input type="date" required className="w-full p-3 border-2 border-sky-100 rounded-2xl bg-sky-50/30 outline-none focus:border-pink-300 font-bold text-slate-700" 
-                                                            value={newSlot.endDate} 
-                                                            onChange={e => setNewSlot({...newSlot, endDate: e.target.value})}
-                                                        />
-                                                    </div>
-                                                </>
+                                                <div className="flex-1">
+                                                    <label className="text-sm font-bold text-slate-500 ml-2 mb-1 block">結束日期</label>
+                                                    <input type="date" required className="w-full p-3 border-2 border-sky-100 rounded-2xl bg-sky-50/30 outline-none focus:border-pink-300 font-bold text-slate-700" 
+                                                        value={newSlot.endDate} 
+                                                        onChange={e => setNewSlot({...newSlot, endDate: e.target.value})}
+                                                    />
+                                                </div>
                                             )}
                                         </div>
 
-                                        <div className="p-4 bg-slate-50 rounded-3xl border border-slate-100">
-                                            <label className="text-xs font-bold text-slate-400 uppercase mb-2 block tracking-wider">時間設定</label>
-                                            <div className="flex flex-wrap gap-3 items-center">
-                                                <div className="flex gap-2 items-center flex-1 min-w-[200px]">
-                                                    <TimeSelect value={newSlot.startTime} onChange={v => setNewSlot({...newSlot, startTime: v})} />
-                                                    <span className="text-slate-300 font-bold">-</span>
-                                                    <TimeSelect value={newSlot.endTime} onChange={v => setNewSlot({...newSlot, endTime: v})} />
-                                                </div>
-                                                <button type="button" onClick={toggleFullDay} className={`px-4 py-2 rounded-full text-xs font-bold transition-all border-2 flex items-center gap-1 ${newSlot.startTime === '00:00' && newSlot.endTime === '23:45' ? 'bg-purple-100 text-purple-600 border-purple-200' : 'bg-white text-slate-400 border-slate-200'}`}>
-                                                    <Icons.Star size={12}/> {newSlot.startTime === '00:00' && newSlot.endTime === '23:45' ? '全天' : '設為全天'}
-                                                </button>
+                                        <div className="p-4 bg-slate-50 rounded-3xl border border-slate-100 space-y-3">
+                                            <label className="text-xs font-bold text-slate-400 uppercase block tracking-wider">時間設定</label>
+                                            <div className="flex gap-2 items-center justify-between">
+                                                <div className="flex-1"><TimeSelect value={newSlot.startTime} onChange={v => setNewSlot({...newSlot, startTime: v})} /></div>
+                                                <span className="text-slate-300 font-bold">-</span>
+                                                <div className="flex-1"><TimeSelect value={newSlot.endTime} onChange={v => setNewSlot({...newSlot, endTime: v})} /></div>
                                             </div>
+                                            <button type="button" onClick={toggleFullDay} className={`w-full px-4 py-3 rounded-2xl text-sm font-bold transition-all border-2 flex items-center justify-center gap-2 ${newSlot.startTime === '00:00' && newSlot.endTime === '23:45' ? 'bg-purple-100 text-purple-600 border-purple-200' : 'bg-white text-slate-400 border-slate-200 hover:bg-slate-50'}`}>
+                                                <Icons.Star size={16}/> {newSlot.startTime === '00:00' && newSlot.endTime === '23:45' ? '✨ 全天時段' : '設為全天'}
+                                            </button>
                                         </div>
 
                                         <div>
@@ -516,8 +538,8 @@
                         )}
                         
                         {showAddRequest && (
-                            <div className="fixed inset-0 bg-sky-900/30 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-                                <div className="magic-card p-8 rounded-[40px] shadow-2xl max-w-md w-full animate-fade-in-down">
+                            <div className="fixed inset-0 bg-sky-900/30 z-50 flex items-center justify-center p-4 backdrop-blur-sm overflow-y-auto">
+                                <div className="magic-card p-8 rounded-[40px] shadow-2xl max-w-md w-full animate-fade-in-down my-8">
                                     <h3 className="font-bold text-2xl mb-6 text-slate-700">新增會議安排</h3>
                                     <form onSubmit={handleAddRequest} className="space-y-5">
                                         <div><label className="text-sm font-bold text-slate-500 ml-2 mb-1 block">選擇空檔</label><select className="w-full p-3 border-2 border-sky-100 rounded-2xl bg-sky-50/30 outline-none focus:border-pink-300 font-bold text-slate-700" value={newRequest.slotId} onChange={e=>{const s=slots.find(x=>x.id==e.target.value); if(s) setNewRequest({...newRequest, slotId: s.id, startTime:s.startTime, endTime:s.endTime});}} required><option value="">請選擇一個空檔 ✨</option>{getAvailableSlots().map(s=><option key={s.id} value={s.id}>{s.date} {s.startTime}-{s.endTime}</option>)}</select></div>
@@ -607,42 +629,61 @@
                         )}
 
                         {activeTab === 'slots' && (
-                             <div className="magic-card rounded-[32px] overflow-hidden shadow-lg shadow-blue-50">
-                                <table className="w-full text-left text-sm">
-                                    <thead className="bg-gradient-to-r from-sky-50 to-white border-b border-sky-100"><tr><th className="p-5 font-bold text-sky-700">日期時間</th><th className="p-5 font-bold text-sky-700">備註/事項</th><th className="p-5 font-bold text-sky-700">狀態</th><th className="p-5 text-right font-bold text-sky-700">操作</th></tr></thead>
-                                    <tbody className="divide-y divide-sky-50">
-                                        {slots.sort((a,b)=>a.date.localeCompare(b.date)).map(slot=>(
-                                            <tr key={slot.id} className="hover:bg-sky-50/50 transition-colors">
-                                                <td className="p-5">
-                                                    <div className="flex flex-col gap-1">
-                                                        <div className="flex items-baseline gap-2 pl-2">
-                                                            <span className="font-extrabold text-slate-700 text-base tabular-nums tracking-wide w-[105px]">{slot.date}</span>
-                                                            <span className="text-slate-400 text-sm font-bold">{WEEKDAYS_SIMPLE[new Date(slot.date).getUTCDay()]}</span>
-                                                        </div>
-                                                        <div className="text-sky-600 font-bold text-sm bg-sky-50 px-2 py-1 rounded-lg w-fit tabular-nums ml-1">
-                                                            {slot.startTime} - {slot.endTime}
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td className="p-5">
-                                                    {slot.type === 'occupied' ? <span className="font-bold text-slate-700 flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-rose-400"></span> {slot.note}</span> : <span className="text-slate-400 font-medium">{slot.note}</span>}
-                                                </td>
-                                                <td className="p-5">{slot.type==='occupied'?<span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-full text-xs font-bold border border-slate-200">已佔用</span>:<span className="bg-emerald-100 text-emerald-600 px-3 py-1 rounded-full text-xs font-bold border border-emerald-200">有空</span>}</td>
-                                                <td className="p-5 text-right">
-                                                    <div className="flex gap-2 justify-end">
-                                                        <button onClick={()=>handleEditSlot(slot)} className="text-slate-400 hover:text-sky-500 p-2 rounded-full hover:bg-sky-50 transition-colors">
-                                                            <Icons.Edit size={18}/>
-                                                        </button>
-                                                        <button onClick={()=>handleDeleteSlot(slot.id)} className="text-slate-300 hover:text-rose-500 p-2 rounded-full hover:bg-rose-50 transition-colors">
-                                                            <Icons.Trash2 size={18}/>
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
+                             <div className="space-y-6">
+                                {groupedSlots.map(group => (
+                                    <div key={group.month} className="magic-card rounded-[32px] overflow-hidden shadow-lg shadow-blue-50/50 transition-all">
+                                        <div 
+                                            className="bg-gradient-to-r from-sky-100 to-blue-50 p-4 px-6 flex justify-between items-center cursor-pointer hover:bg-sky-200 transition-colors sticky-group-header"
+                                            onClick={() => toggleMonthCollapse(group.month)}
+                                        >
+                                            <h3 className="font-extrabold text-sky-800 text-lg flex items-center gap-2">
+                                                <Icons.Calendar size={20}/> {group.month}
+                                            </h3>
+                                            <div className="text-sky-400">
+                                                {collapsedMonths[group.month] ? <Icons.ChevronDown size={20}/> : <Icons.ChevronUp size={20}/>}
+                                            </div>
+                                        </div>
+                                        
+                                        {!collapsedMonths[group.month] && (
+                                            <table className="w-full text-left text-sm">
+                                                <thead className="bg-white border-b border-sky-100"><tr><th className="p-5 font-bold text-sky-700">日期時間</th><th className="p-5 font-bold text-sky-700">備註/事項</th><th className="p-5 font-bold text-sky-700">狀態</th><th className="p-5 text-right font-bold text-sky-700">操作</th></tr></thead>
+                                                <tbody className="divide-y divide-sky-50">
+                                                    {group.items.map(slot=>(
+                                                        <tr key={slot.id} className="hover:bg-sky-50/50 transition-colors">
+                                                            <td className="p-5">
+                                                                <div className="flex flex-col gap-1">
+                                                                    <div className="flex items-baseline gap-2 pl-2">
+                                                                        <span className="font-extrabold text-slate-700 text-base tabular-nums tracking-wide w-[105px]">{slot.date}</span>
+                                                                        <span className="text-slate-400 text-sm font-bold">{WEEKDAYS_SIMPLE[new Date(slot.date).getUTCDay()]}</span>
+                                                                    </div>
+                                                                    <div className="text-sky-600 font-bold text-sm bg-sky-50 px-2 py-1 rounded-lg w-fit tabular-nums ml-1">
+                                                                        {slot.startTime} - {slot.endTime}
+                                                                    </div>
+                                                                </div>
+                                                            </td>
+                                                            <td className="p-5">
+                                                                {slot.type === 'occupied' ? <span className="font-bold text-slate-700 flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-rose-400"></span> {slot.note}</span> : <span className="text-slate-400 font-medium">{slot.note}</span>}
+                                                            </td>
+                                                            <td className="p-5">{slot.type==='occupied'?<span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-full text-xs font-bold border border-slate-200">已佔用</span>:<span className="bg-emerald-100 text-emerald-600 px-3 py-1 rounded-full text-xs font-bold border border-emerald-200">有空</span>}</td>
+                                                            <td className="p-5 text-right">
+                                                                <div className="flex gap-2 justify-end">
+                                                                    <button onClick={()=>handleEditSlot(slot)} className="text-slate-400 hover:text-sky-500 p-2 rounded-full hover:bg-sky-50 transition-colors">
+                                                                        <Icons.Edit size={18}/>
+                                                                    </button>
+                                                                    <button onClick={()=>handleDeleteSlot(slot.id)} className="text-slate-300 hover:text-rose-500 p-2 rounded-full hover:bg-rose-50 transition-colors">
+                                                                        <Icons.Trash2 size={18}/>
+                                                                    </button>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        )}
+                                    </div>
+                                ))}
+                                {groupedSlots.length === 0 && <div className="text-center py-12 text-slate-400 border-2 border-dashed border-sky-200 bg-white/50 rounded-[30px] font-bold">目前沒有任何時段資料 ✨</div>}
+                             </div>
                         )}
                     </div>
                 </div>
