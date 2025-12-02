@@ -62,13 +62,53 @@
             const [newSlot, setNewSlot] = useState({ date: '', startTime: '09:00', endTime: '10:00', note: '', type: 'available' });
             const [newRequest, setNewRequest] = useState({ title: '', slotId: '', requestorNote: '', requestorName: '依玲', startTime: '', endTime: '' });
 
+            // --- 資料格式修正 (Normalization) ---
+            // 這是修復您遇到「看不懂顯是什麼」的關鍵函數
+            // 它會把 Google Sheet 傳回來的 ISO 時間 (如 2025-12-10T16:00...) 轉回正常的日期與時間
+            const normalizeData = (list, type) => {
+                if (!Array.isArray(list)) return [];
+                return list.map(item => {
+                    let newItem = { ...item };
+                    
+                    // 修正日期 (Date)
+                    if (newItem.date && typeof newItem.date === 'string' && newItem.date.includes('T')) {
+                        const d = new Date(newItem.date);
+                        // 轉為當地時間的 YYYY-MM-DD
+                        const year = d.getFullYear();
+                        const month = String(d.getMonth() + 1).padStart(2, '0');
+                        const day = String(d.getDate()).padStart(2, '0');
+                        newItem.date = `${year}-${month}-${day}`;
+                    }
+
+                    // 修正時間 (StartTime / EndTime)
+                    // Google Sheet 有時會把時間傳成 1899-12-30T05:00:00.000Z
+                    const fixTime = (t) => {
+                        if (!t) return '';
+                        if (typeof t === 'string' && (t.includes('T') || t.includes(':00.000Z'))) {
+                            const d = new Date(t);
+                            const h = String(d.getHours()).padStart(2, '0');
+                            const m = String(d.getMinutes()).padStart(2, '0');
+                            return `${h}:${m}`;
+                        }
+                        // 如果是 HH:mm:ss 格式，只取前5碼 HH:mm
+                        if (typeof t === 'string' && t.length > 5 && t.includes(':')) {
+                            return t.substring(0, 5);
+                        }
+                        return t;
+                    };
+
+                    if (newItem.startTime) newItem.startTime = fixTime(newItem.startTime);
+                    if (newItem.endTime) newItem.endTime = fixTime(newItem.endTime);
+
+                    return newItem;
+                });
+            };
+
             // API Helper
             const callApi = async (action, payload = {}, showLoading = true) => {
                 if (!scriptUrl) return;
                 if (showLoading) setIsLoading(true);
                 try {
-                    // Using no-cors might be needed but GAS usually handles POSTs well if text/plain
-                    // For simplicity in this demo, we use POST with stringified body
                     const response = await fetch(scriptUrl + '?action=' + action, {
                         method: 'POST', 
                         mode: 'cors',
@@ -89,8 +129,9 @@
             const refreshData = async () => {
                 const data = await callApi('read');
                 if (data) {
-                    setSlots(data.slots || []);
-                    setRequests(data.requests || []);
+                    // 這裡進行資料修正
+                    setSlots(normalizeData(data.slots || []));
+                    setRequests(normalizeData(data.requests || []));
                     setError('');
                 }
             };
