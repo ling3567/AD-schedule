@@ -3,24 +3,77 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>部長行程協調小幫手 (雲端版)</title>
+    <title>部長行程魔法書 🏰✨</title>
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <style>
-        body { font-family: "Microsoft JhengHei", sans-serif; }
-        .loader { border: 3px solid #f3f3f3; border-radius: 50%; border-top: 3px solid #3498db; width: 20px; height: 20px; animation: spin 1s linear infinite; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        body { 
+            font-family: 'Quicksand', "Microsoft JhengHei", sans-serif; 
+            background: linear-gradient(135deg, #fdf2f8 0%, #f0f9ff 100%);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        /* 魔法特效動畫 */
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.3; transform: scale(0.8); }
+            50% { opacity: 1; transform: scale(1.2); }
+        }
+        @keyframes wand-wave {
+            0% { transform: rotate(0deg); }
+            25% { transform: rotate(-10deg); }
+            75% { transform: rotate(10deg); }
+            100% { transform: rotate(0deg); }
+        }
+
+        .animate-float { animation: float 6s ease-in-out infinite; }
+        .animate-float-delay { animation: float 8s ease-in-out infinite 2s; }
+        .animate-twinkle { animation: twinkle 3s ease-in-out infinite; }
+        .animate-wand { animation: wand-wave 2s ease-in-out infinite; }
+
+        .magic-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            border: 2px solid rgba(255, 255, 255, 0.8);
+            box-shadow: 0 10px 40px -10px rgba(236, 72, 153, 0.15);
+        }
+        .magic-btn {
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .magic-btn:active { transform: scale(0.92); }
+        
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* 數字等寬，確保對齊 */
+        .tabular-nums {
+            font-variant-numeric: tabular-nums;
+        }
     </style>
 </head>
-<body class="bg-gray-50 text-slate-800">
-    <div id="root"></div>
+<body class="text-slate-700 relative">
+    
+    <!-- 背景裝飾 (雲朵與星星) -->
+    <div class="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+        <div class="absolute top-10 left-10 text-pink-200 animate-float opacity-50"><svg width="60" height="60" viewBox="0 0 24 24" fill="currentColor"><path d="M17.5,19c-5.02,0-9-2.02-9-4.5c0-0.61,0.24-1.19,0.67-1.72C9.07,12.6,9,12.41,9,12.21c0-2.95,3.66-5.41,8.38-5.69C17.75,3.88,18.81,2,20.5,2c2.48,0,4.5,4.03,4.5,9s-2.02,9-4.5,9c-0.27,0-0.53-0.05-0.79-0.14C19.16,19.57,18.36,19,17.5,19z M6,19c-3.31,0-6-2.69-6-6s2.69-6,6-6c0.59,0,1.15,0.09,1.69,0.25C8.38,4.72,10.94,3,14,3c0.17,0,0.34,0.01,0.5,0.02C13.23,6.86,9.91,10.66,9.91,15.2c0,0.6,0.07,1.18,0.19,1.74C9.17,18.12,7.67,19,6,19z"/></svg></div>
+        <div class="absolute bottom-20 right-10 text-sky-100 animate-float-delay opacity-60"><svg width="100" height="60" viewBox="0 0 24 24" fill="currentColor"><path d="M18.5,19C15.46,19,13,16.54,13,13.5S15.46,8,18.5,8s5.5,2.46,5.5,5.5S21.54,19,18.5,19z M6.5,19C3.46,19,1,16.54,1,13.5S3.46,8,6.5,8c0.47,0,0.92,0.06,1.36,0.17C7.32,7.16,7,6.12,7,5c0-2.76,2.24-5,5-5c2.56,0,4.67,1.92,4.96,4.41C17.37,4.15,17.92,4,18.5,4c3.04,0,5.5,2.46,5.5,5.5c0,0.17-0.01,0.33-0.03,0.5c0.64,1.01,1.03,2.21,1.03,3.5c0,3.59-2.91,6.5-6.5,6.5c-0.62,0-1.22-0.09-1.79-0.25C15.86,21.94,13.82,23,11.5,23c-3.04,0-5.5-2.46-5.5-5.5c0-0.49,0.07-0.97,0.19-1.42C5.69,16.68,5.12,17,4.5,17c-1.93,0-3.5-1.57-3.5-3.5s1.57-3.5,3.5-3.5c0.16,0,0.31,0.01,0.47,0.04C5.17,9.39,5.78,8.87,6.5,8.51V19z"/></svg></div>
+        <div class="absolute top-1/4 right-1/4 text-yellow-300 animate-twinkle"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12,2l3.09,6.26L22,9.27l-5,4.87l1.18,6.88L12,17.77l-6.18,3.25L7,14.14l-5-4.87l6.91-1.01L12,2z"/></svg></div>
+        <div class="absolute bottom-1/3 left-1/3 text-purple-200 animate-twinkle" style="animation-delay: 1.5s"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12,2l3.09,6.26L22,9.27l-5,4.87l1.18,6.88L12,17.77l-6.18,3.25L7,14.14l-5-4.87l6.91-1.01L12,2z"/></svg></div>
+    </div>
+
+    <div id="root" class="relative z-10"></div>
 
     <script type="text/babel">
-        // --- 圖示組件 ---
-        const Icon = ({ path, size = 16, className = "" }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>{path}</svg>
+        // --- 特殊童話圖示 ---
+        const Icon = ({ path, size = 20, className = "", viewBox="0 0 24 24" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox={viewBox} fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>{path}</svg>
         );
         const Icons = {
             Plus: (p) => <Icon {...p} path={<><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></>} />,
@@ -36,7 +89,12 @@
             List: (p) => <Icon {...p} path={<><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></>} />,
             Ban: (p) => <Icon {...p} path={<><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></>} />,
             CornerDownRight: (p) => <Icon {...p} path={<><polyline points="15 10 20 15 15 20"></polyline><path d="M4 4v7a4 4 0 0 0 4 4h12"></path></>} />,
-            Settings: (p) => <Icon {...p} path={<><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></>} />
+            Settings: (p) => <Icon {...p} path={<><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></>} />,
+            
+            // 童話專屬圖示
+            Castle: (p) => <Icon {...p} viewBox="0 0 24 24" path={<><path d="M2,22h20V10l-4-4v2h-2V6l-4-4L8,6v2H6v-2L2,10V22z M4,12h2v2H4V12z M4,16h2v2H4V16z M8,8h2v2H8V8z M8,12h2v2H8V12z M8,16h2v2H8V16z M14,8h2v2h-2V8z M14,12h2v2h-2V12z M14,16h2v2h-2V16z M18,12h2v2h-2V12z M18,16h2v2h-2V16z M10,22v-4h4v4H10z"/></>} />,
+            Carriage: (p) => <Icon {...p} viewBox="0 0 24 24" path={<><circle cx="12" cy="13" r="8"></circle><circle cx="5.5" cy="20.5" r="2.5"></circle><circle cx="18.5" cy="20.5" r="2.5"></circle><path d="M12,5V2"></path><path d="M12,13h.01"></path><path d="M5.5,13H3"></path><path d="M18.5,13H21"></path></>} />,
+            Wand: (p) => <Icon {...p} path={<><path d="M14.5,9.5L2,22"></path><path d="M17,7l2-4l2,4l4,2l-4,2l-2,4l-2-4l-4-2L17,7z"></path></>} />
         };
 
         const { useState, useEffect } = React;
@@ -45,6 +103,7 @@
             const [scriptUrl, setScriptUrl] = useState(() => localStorage.getItem('minister_gs_url') || '');
             const [urlInput, setUrlInput] = useState('');
             const [isLoading, setIsLoading] = useState(false);
+            const [deletingId, setDeletingId] = useState(null);
             const [error, setError] = useState('');
             
             // Data
@@ -62,39 +121,39 @@
             const [newSlot, setNewSlot] = useState({ date: '', startTime: '09:00', endTime: '10:00', note: '', type: 'available' });
             const [newRequest, setNewRequest] = useState({ title: '', slotId: '', requestorNote: '', requestorName: '依玲', startTime: '', endTime: '' });
 
-            // --- 資料格式修正 (Normalization) ---
-            // 這是修復您遇到「看不懂顯是什麼」的關鍵函數
-            // 它會把 Google Sheet 傳回來的 ISO 時間 (如 2025-12-10T16:00...) 轉回正常的日期與時間
-            const normalizeData = (list, type) => {
+            // --- 資料格式修正 (Normalization) - 台北時間版 ---
+            const normalizeData = (list) => {
                 if (!Array.isArray(list)) return [];
                 return list.map(item => {
                     let newItem = { ...item };
                     
-                    // 修正日期 (Date)
-                    if (newItem.date && typeof newItem.date === 'string' && newItem.date.includes('T')) {
-                        const d = new Date(newItem.date);
-                        // 轉為當地時間的 YYYY-MM-DD
-                        const year = d.getFullYear();
-                        const month = String(d.getMonth() + 1).padStart(2, '0');
-                        const day = String(d.getDate()).padStart(2, '0');
-                        newItem.date = `${year}-${month}-${day}`;
+                    if (newItem.date) {
+                        try {
+                            const d = new Date(newItem.date);
+                            if (!isNaN(d.getTime())) {
+                                const taipeiDate = d.toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' });
+                                newItem.date = taipeiDate;
+                            } else if (typeof newItem.date === 'string' && newItem.date.includes('T')) {
+                                newItem.date = newItem.date.split('T')[0];
+                            }
+                        } catch (e) { console.error("Date parse error", e); }
                     }
 
-                    // 修正時間 (StartTime / EndTime)
-                    // Google Sheet 有時會把時間傳成 1899-12-30T05:00:00.000Z
                     const fixTime = (t) => {
                         if (!t) return '';
-                        if (typeof t === 'string' && (t.includes('T') || t.includes(':00.000Z'))) {
+                        if (typeof t === 'string' && t.includes('T') && t.includes('Z')) {
                             const d = new Date(t);
-                            const h = String(d.getHours()).padStart(2, '0');
-                            const m = String(d.getMinutes()).padStart(2, '0');
-                            return `${h}:${m}`;
+                            if (!isNaN(d.getTime())) {
+                                return d.toLocaleTimeString('sv-SE', {
+                                    timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit'
+                                });
+                            }
                         }
-                        // 如果是 HH:mm:ss 格式，只取前5碼 HH:mm
-                        if (typeof t === 'string' && t.length > 5 && t.includes(':')) {
-                            return t.substring(0, 5);
+                        let str = String(t);
+                        if (str.includes(':') && str.length >= 5) {
+                            return str.substring(0, 5);
                         }
-                        return t;
+                        return str;
                     };
 
                     if (newItem.startTime) newItem.startTime = fixTime(newItem.startTime);
@@ -120,28 +179,41 @@
                     return data;
                 } catch (err) {
                     console.error(err);
-                    setError('連線失敗，請檢查網址或網路: ' + err.message);
+                    throw err;
                 } finally {
                     if (showLoading) setIsLoading(false);
                 }
             };
 
             const refreshData = async () => {
-                const data = await callApi('read');
-                if (data) {
-                    // 這裡進行資料修正
-                    setSlots(normalizeData(data.slots || []));
-                    setRequests(normalizeData(data.requests || []));
-                    setError('');
+                try {
+                    const data = await callApi('read', {}, false);
+                    if (data) {
+                        setSlots(normalizeData(data.slots || []));
+                        setRequests(normalizeData(data.requests || []));
+                        setError('');
+                    }
+                } catch (e) {
+                    console.error("Refresh failed:", e);
                 }
             };
 
-            // Init Load
             useEffect(() => {
-                if (scriptUrl) refreshData();
+                if (scriptUrl) {
+                    setIsLoading(true);
+                    callApi('read', {}, false).then(data => {
+                        if(data) {
+                            setSlots(normalizeData(data.slots || []));
+                            setRequests(normalizeData(data.requests || []));
+                        }
+                        setIsLoading(false);
+                    }).catch(e => {
+                        setError('連線失敗: ' + e.message);
+                        setIsLoading(false);
+                    });
+                }
             }, [scriptUrl]);
 
-            // Handlers
             const handleSaveUrl = () => {
                 if(!urlInput.includes('script.google.com')) { alert('網址格式看起來不對喔'); return; }
                 localStorage.setItem('minister_gs_url', urlInput);
@@ -153,16 +225,29 @@
                 e.preventDefault();
                 const tempId = Date.now();
                 const slotData = { ...newSlot, id: tempId };
-                await callApi('addSlot', slotData);
-                await refreshData(); // Reload to sync
-                setNewSlot({ date: '', startTime: '09:00', endTime: '10:00', note: '', type: 'available' });
-                setShowAddSlot(false);
+                try {
+                    await callApi('addSlot', slotData);
+                    await refreshData();
+                    setNewSlot({ date: '', startTime: '09:00', endTime: '10:00', note: '', type: 'available' });
+                    setShowAddSlot(false);
+                } catch (err) {
+                    alert("新增失敗: " + err.message);
+                }
             };
 
             const handleDeleteSlot = async (id) => {
+                if (!id) return;
                 if (!confirm('確定刪除此時段？將一併刪除該時段下所有會議。')) return;
-                await callApi('deleteSlot', { id });
-                refreshData();
+                setDeletingId(id);
+                try {
+                    await callApi('deleteSlot', { id }, false);
+                    await refreshData();
+                    alert("刪除成功！");
+                } catch (err) {
+                    alert("刪除失敗: " + err.message);
+                } finally {
+                    setDeletingId(null);
+                }
             };
 
             const isTimeOverlapping = (slotId, start, end) => {
@@ -176,17 +261,20 @@
                     alert('無法新增：此時段與現有會議時間重疊！'); return;
                 }
                 const reqData = { ...newRequest, id: Date.now(), slotId: parseInt(newRequest.slotId), step: 1, updatedAt: new Date().toISOString() };
-                await callApi('addRequest', reqData);
-                await refreshData();
-                setNewRequest({ title: '', slotId: '', requestorNote: '', requestorName: '依玲', startTime: '', endTime: '' });
-                setShowAddRequest(false);
-                setActiveTab('dashboard');
+                try {
+                    await callApi('addRequest', reqData);
+                    await refreshData();
+                    setNewRequest({ title: '', slotId: '', requestorNote: '', requestorName: '依玲', startTime: '', endTime: '' });
+                    setShowAddRequest(false);
+                    setActiveTab('dashboard');
+                } catch(err) {
+                    alert("新增失敗: " + err.message);
+                }
             };
 
             const handleUpdateStep = async (reqId, newStep) => {
-                // Optimistic update
                 setRequests(prev => prev.map(r => r.id === reqId ? { ...r, step: newStep, updatedAt: new Date().toISOString() } : r));
-                await callApi('updateRequestStep', { id: reqId, step: newStep, updatedAt: new Date().toISOString() }, false);
+                callApi('updateRequestStep', { id: reqId, step: newStep, updatedAt: new Date().toISOString() }, false).catch(()=>refreshData());
             };
 
             const handleDeleteRequest = async (id) => {
@@ -195,44 +283,42 @@
                 refreshData();
             };
 
-            // Setup Screen
             if (!scriptUrl || showSettings) {
                 return (
-                    <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
-                        <div className="bg-white p-8 rounded-xl shadow-lg max-w-md w-full">
-                            <h1 className="text-2xl font-bold mb-4 text-center text-slate-800">首次設定</h1>
-                            <p className="text-sm text-gray-600 mb-4">請貼上您的 Google Apps Script 網頁應用程式網址：</p>
-                            <input type="text" placeholder="https://script.google.com/..." className="w-full p-3 border border-gray-300 rounded mb-4" value={urlInput} onChange={e => setUrlInput(e.target.value)} />
-                            <button onClick={handleSaveUrl} className="w-full bg-blue-600 text-white p-3 rounded font-bold hover:bg-blue-700">開始使用</button>
-                            {scriptUrl && <button onClick={() => setShowSettings(false)} className="w-full mt-2 text-gray-500 text-sm underline">取消</button>}
-                            <div className="mt-6 text-xs text-gray-400 border-t pt-4">
-                                <p>如何取得網址？</p>
-                                <ol className="list-decimal pl-4 mt-1 space-y-1">
-                                    <li>建立 Google 試算表</li>
-                                    <li>擴充功能 &gt; Apps Script</li>
-                                    <li>貼上後端程式碼並儲存</li>
-                                    <li>部署 &gt; 新增部署 &gt; 網頁應用程式 &gt; 權限設為「所有人」</li>
-                                    <li>複製產生的網址貼上至此</li>
-                                </ol>
-                            </div>
+                    <div className="min-h-screen flex items-center justify-center p-4 bg-sky-50">
+                        <div className="magic-card p-8 rounded-[40px] shadow-xl max-w-md w-full border-4 border-white/50 relative overflow-hidden">
+                            <div className="absolute -top-10 -right-10 text-yellow-300 opacity-30 animate-spin" style={{animationDuration: '10s'}}><Icons.Castle size={200} /></div>
+                            <h1 className="text-3xl font-bold mb-4 text-center text-sky-600 tracking-wide relative z-10 flex flex-col items-center gap-2">
+                                <Icons.Castle size={60} className="text-pink-400 drop-shadow-sm mb-2" />
+                                魔法書設定
+                            </h1>
+                            <p className="text-sm text-slate-500 mb-6 text-center font-bold relative z-10">請貼上您的 Google Apps Script 咒語網址</p>
+                            <input type="text" placeholder="https://script.google.com/..." className="w-full p-4 border-2 border-sky-100 rounded-3xl mb-6 focus:border-pink-300 focus:ring focus:ring-pink-100 outline-none transition-all bg-sky-50/50 relative z-10" value={urlInput} onChange={e => setUrlInput(e.target.value)} />
+                            <button onClick={handleSaveUrl} className="magic-btn w-full bg-gradient-to-r from-sky-400 to-pink-400 text-white p-4 rounded-full font-bold shadow-lg shadow-pink-200/50 text-lg relative z-10">開啟魔法書 ✨</button>
+                            {scriptUrl && <button onClick={() => setShowSettings(false)} className="w-full mt-4 text-slate-400 text-sm font-bold relative z-10">取消</button>}
                         </div>
                     </div>
                 );
             }
 
-            // --- Helpers for Render ---
             const STEPS = {
-                1: { label: '待確認', color: 'bg-gray-100 text-gray-700', icon: <Icons.User size={14}/> },
-                2: { label: '回報伊君', color: 'bg-blue-100 text-blue-700', icon: <Icons.Clock size={14}/> },
-                3: { label: '確認中', color: 'bg-purple-100 text-purple-700', icon: <Icons.AlertCircle size={14}/> },
-                4: { label: '已完成', color: 'bg-emerald-600 text-white', icon: <Icons.CheckCircle size={14}/> },
+                1: { label: '待確認', color: 'bg-amber-100 text-amber-700 border-amber-200', icon: <Icons.User size={14}/> },
+                2: { label: '回報伊君', color: 'bg-sky-100 text-sky-700 border-sky-200', icon: <Icons.Clock size={14}/> },
+                3: { label: '確認中', color: 'bg-purple-100 text-purple-700 border-purple-200', icon: <Icons.AlertCircle size={14}/> },
+                4: { label: '已完成', color: 'bg-rose-100 text-rose-700 border-rose-200', icon: <Icons.CheckCircle size={14}/> },
             };
-            const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
+            const WEEKDAYS = ['週日', '週一', '週二', '週三', '週四', '週五', '週六'];
+            const WEEKDAYS_SIMPLE = ['日', '一', '二', '三', '四', '五', '六'];
             const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
             const MINUTES = ['00', '15', '30', '45'];
+            
             const TimeSelect = ({ value, onChange, className }) => {
                 const [h, m] = value ? value.split(':') : ['09', '00'];
-                return (<div className={`flex items-center gap-1 ${className}`}><select value={h} onChange={(e) => onChange(`${e.target.value}:${m}`)} className="p-2 border rounded bg-white flex-1 min-w-[60px]">{HOURS.map(x=><option key={x} value={x}>{x}</option>)}</select>:<select value={m} onChange={(e) => onChange(`${h}:${e.target.value}`)} className="p-2 border rounded bg-white flex-1 min-w-[60px]">{MINUTES.map(x=><option key={x} value={x}>{x}</option>)}</select></div>);
+                return (<div className={`flex items-center gap-1 ${className}`}>
+                    <select value={h} onChange={(e) => onChange(`${e.target.value}:${m}`)} className="p-3 border-2 border-sky-100 rounded-2xl bg-white flex-1 min-w-[70px] outline-none focus:border-pink-300 font-bold text-slate-600">{HOURS.map(x=><option key={x} value={x}>{x}</option>)}</select>
+                    <span className="text-pink-300 font-bold">:</span>
+                    <select value={m} onChange={(e) => onChange(`${h}:${e.target.value}`)} className="p-3 border-2 border-sky-100 rounded-2xl bg-white flex-1 min-w-[70px] outline-none focus:border-pink-300 font-bold text-slate-600">{MINUTES.map(x=><option key={x} value={x}>{x}</option>)}</select>
+                </div>);
             };
             const getDaysInMonth = (y, m) => new Date(y, m + 1, 0).getDate();
             const getFirstDayOfMonth = (y, m) => new Date(y, m, 1).getDay();
@@ -241,24 +327,30 @@
             const getAvailableSlots = () => slots.filter(s => s.type === 'available');
 
             return (
-                <div className="min-h-screen flex flex-col max-w-5xl mx-auto bg-white shadow-xl">
-                    <header className="bg-slate-800 text-white p-4 sticky top-0 z-20 flex justify-between items-center shadow-md">
-                        <div><h1 className="text-xl font-bold flex items-center gap-2"><Icons.Calendar size={24} /> 部長行程協調 (Google Sheet版)</h1></div>
+                <div className="min-h-screen flex flex-col max-w-5xl mx-auto shadow-2xl rounded-none sm:rounded-[40px] my-0 sm:my-8 overflow-hidden bg-white/80 backdrop-blur border-4 border-white">
+                    <header className="bg-gradient-to-r from-pink-400 via-purple-400 to-sky-400 text-white p-6 sticky top-0 z-20 flex flex-col sm:flex-row justify-between items-center shadow-lg shadow-purple-100">
+                        <div className="mb-4 sm:mb-0">
+                            <h1 className="text-2xl font-extrabold flex items-center gap-3 tracking-wider drop-shadow-md">
+                                <span className="bg-white/20 p-2 rounded-2xl"><Icons.Castle size={28} className="animate-float" /></span> 
+                                部長行程魔法書
+                            </h1>
+                        </div>
                         <div className="flex items-center gap-3">
-                            {isLoading && <div className="loader"></div>}
-                            <button onClick={() => refreshData()} className="text-xs bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded text-white transition-colors">重新整理</button>
-                            <button onClick={() => setShowSettings(true)} className="text-slate-400 hover:text-white"><Icons.Settings size={20}/></button>
-                            <button onClick={() => setShowAddSlot(true)} className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded text-sm font-medium flex items-center gap-1"><Icons.Plus size={16} /> <span className="hidden sm:inline">記時段</span></button>
+                            {isLoading && <div className="animate-wand text-yellow-200"><Icons.Wand size={28}/></div>}
+                            <button onClick={() => refreshData()} className="magic-btn text-xs bg-white/20 hover:bg-white/30 px-4 py-2 rounded-full text-white font-bold backdrop-blur-md border border-white/30">重新整理 ↻</button>
+                            <button onClick={() => setShowSettings(true)} className="magic-btn text-white/80 hover:text-white bg-white/10 p-2 rounded-full"><Icons.Settings size={22}/></button>
+                            <button onClick={() => setShowAddSlot(true)} className="magic-btn bg-white text-pink-500 px-5 py-2.5 rounded-full text-sm font-bold flex items-center gap-2 shadow-lg shadow-pink-500/20 hover:bg-pink-50">
+                                <Icons.Plus size={18} /> <span className="hidden sm:inline">記時段</span>
+                            </button>
                         </div>
                     </header>
                     
-                    {error && <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 m-4" role="alert"><p>{error}</p></div>}
+                    {error && <div className="bg-rose-100 border-l-8 border-rose-400 text-rose-600 p-4 m-6 rounded-r-xl shadow-sm font-bold" role="alert"><p>{error}</p></div>}
 
-                    <div className="p-2 sm:p-4 flex-1 bg-gray-50">
-                        {/* Tabs */}
-                        <div className="flex gap-2 mb-4 border-b border-gray-200 overflow-x-auto bg-white p-2 rounded-t-lg">
+                    <div className="p-4 sm:p-6 flex-1 bg-white/50">
+                        <div className="flex gap-3 mb-6 overflow-x-auto p-1">
                             {['calendar', 'dashboard', 'slots'].map(tab => (
-                                <button key={tab} onClick={() => setActiveTab(tab)} className={`px-4 py-2 font-medium flex items-center gap-2 whitespace-nowrap transition-colors rounded-lg ${activeTab === tab ? 'bg-blue-50 text-blue-600' : 'text-gray-500 hover:bg-gray-100'}`}>
+                                <button key={tab} onClick={() => setActiveTab(tab)} className={`magic-btn px-6 py-3 font-bold flex items-center gap-2 whitespace-nowrap transition-all rounded-full shadow-sm border-2 ${activeTab === tab ? 'bg-sky-100 text-sky-600 border-sky-200' : 'bg-white text-slate-400 border-transparent hover:bg-slate-50'}`}>
                                     {tab === 'calendar' && <><Icons.Calendar size={18}/> 月曆</>}
                                     {tab === 'dashboard' && <><Icons.List size={18}/> 追蹤 ({requests.filter(r => r.step < 4).length})</>}
                                     {tab === 'slots' && <><Icons.Clock size={18}/> 列表</>}
@@ -268,67 +360,73 @@
 
                         {/* Modals */}
                         {showAddSlot && (
-                            <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                                <div className="bg-white p-6 rounded-xl shadow-2xl max-w-md w-full animate-fade-in-down">
-                                    <h3 className="font-bold text-lg mb-4 flex items-center gap-2">新增時段</h3>
-                                    <form onSubmit={handleAddSlot} className="space-y-4">
-                                        <div className="flex bg-gray-100 p-1 rounded-lg">
-                                            <button type="button" onClick={() => setNewSlot({...newSlot, type: 'available'})} className={`flex-1 py-2 rounded font-bold flex gap-2 justify-center ${newSlot.type === 'available' ? 'bg-white text-emerald-600 shadow' : 'text-gray-500'}`}><Icons.CheckCircle size={16}/> 有空</button>
-                                            <button type="button" onClick={() => setNewSlot({...newSlot, type: 'occupied'})} className={`flex-1 py-2 rounded font-bold flex gap-2 justify-center ${newSlot.type === 'occupied' ? 'bg-white text-gray-600 shadow' : 'text-gray-500'}`}><Icons.Ban size={16}/> 已佔用</button>
+                            <div className="fixed inset-0 bg-sky-900/30 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+                                <div className="magic-card p-8 rounded-[40px] shadow-2xl max-w-md w-full animate-fade-in-down">
+                                    <h3 className="font-bold text-2xl mb-6 flex items-center gap-3 text-slate-700">
+                                        <span className="bg-sky-100 p-2 rounded-full text-sky-500"><Icons.Plus size={24}/></span> 新增時段
+                                    </h3>
+                                    <form onSubmit={handleAddSlot} className="space-y-5">
+                                        <div className="flex gap-3 p-1 bg-slate-100 rounded-full">
+                                            <button type="button" onClick={() => setNewSlot({...newSlot, type: 'available'})} className={`flex-1 py-3 rounded-full font-bold flex gap-2 justify-center transition-all ${newSlot.type === 'available' ? 'bg-white text-emerald-500 shadow-md' : 'text-slate-400'}`}><Icons.CheckCircle size={18}/> 有空</button>
+                                            <button type="button" onClick={() => setNewSlot({...newSlot, type: 'occupied'})} className={`flex-1 py-3 rounded-full font-bold flex gap-2 justify-center transition-all ${newSlot.type === 'occupied' ? 'bg-white text-rose-500 shadow-md' : 'text-slate-400'}`}><Icons.Ban size={18}/> 已佔用</button>
                                         </div>
-                                        <div><label className="text-sm font-bold text-gray-600">日期</label><input type="date" required className="w-full p-2 border rounded" value={newSlot.date} onChange={e => setNewSlot({...newSlot, date: e.target.value})}/></div>
-                                        <div className="flex gap-2"><div className="flex-1"><label className="text-sm font-bold text-gray-600">開始</label><TimeSelect value={newSlot.startTime} onChange={v => setNewSlot({...newSlot, startTime: v})} /></div><div className="flex-1"><label className="text-sm font-bold text-gray-600">結束</label><TimeSelect value={newSlot.endTime} onChange={v => setNewSlot({...newSlot, endTime: v})} /></div></div>
-                                        <div><label className="text-sm font-bold text-gray-600">備註</label><input type="text" className="w-full p-2 border rounded" value={newSlot.note} onChange={e => setNewSlot({...newSlot, note: e.target.value})}/></div>
-                                        <div className="flex gap-2"><button type="button" onClick={() => setShowAddSlot(false)} className="flex-1 py-2 bg-gray-100 rounded">取消</button><button type="submit" disabled={isLoading} className="flex-1 py-2 bg-emerald-600 text-white rounded">{isLoading?'儲存中...':'儲存'}</button></div>
+                                        <div><label className="text-sm font-bold text-slate-500 ml-2 mb-1 block">日期</label><input type="date" required className="w-full p-3 border-2 border-sky-100 rounded-2xl bg-sky-50/30 outline-none focus:border-pink-300 font-bold text-slate-700" value={newSlot.date} onChange={e => setNewSlot({...newSlot, date: e.target.value})}/></div>
+                                        <div className="flex gap-3"><div className="flex-1"><label className="text-sm font-bold text-slate-500 ml-2 mb-1 block">開始</label><TimeSelect value={newSlot.startTime} onChange={v => setNewSlot({...newSlot, startTime: v})} /></div><div className="flex-1"><label className="text-sm font-bold text-slate-500 ml-2 mb-1 block">結束</label><TimeSelect value={newSlot.endTime} onChange={v => setNewSlot({...newSlot, endTime: v})} /></div></div>
+                                        <div>
+                                            <label className="text-sm font-bold text-slate-500 ml-2 mb-1 block">{newSlot.type === 'occupied' ? '事項說明' : '備註'}</label>
+                                            <input type="text" className="w-full p-3 border-2 border-sky-100 rounded-2xl bg-sky-50/30 outline-none focus:border-pink-300 font-bold text-slate-700" value={newSlot.note} onChange={e => setNewSlot({...newSlot, note: e.target.value})} placeholder={newSlot.type === 'occupied' ? "例如：行政院會" : "例如：部長在辦公室"}/>
+                                        </div>
+                                        <div className="flex gap-3 pt-2"><button type="button" onClick={() => setShowAddSlot(false)} className="magic-btn flex-1 py-3 bg-slate-100 text-slate-500 rounded-2xl font-bold">取消</button><button type="submit" disabled={isLoading} className="magic-btn flex-1 py-3 bg-gradient-to-r from-emerald-400 to-teal-400 text-white rounded-2xl font-bold shadow-lg shadow-emerald-200">{isLoading?'儲存中...':'儲存'}</button></div>
                                     </form>
                                 </div>
                             </div>
                         )}
                         
-                        {/* Add Request Modal */}
                         {showAddRequest && (
-                            <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                                <div className="bg-white p-6 rounded-xl shadow-2xl max-w-md w-full animate-fade-in-down">
-                                    <h3 className="font-bold text-lg mb-4">新增會議安排</h3>
-                                    <form onSubmit={handleAddRequest} className="space-y-4">
-                                        <div><label className="text-sm font-bold text-gray-600">選擇空檔</label><select className="w-full p-2 border rounded" value={newRequest.slotId} onChange={e=>{const s=slots.find(x=>x.id==e.target.value); if(s) setNewRequest({...newRequest, slotId: s.id, startTime:s.startTime, endTime:s.endTime});}} required><option value="">請選擇</option>{getAvailableSlots().map(s=><option key={s.id} value={s.id}>{s.date} {s.startTime}-{s.endTime}</option>)}</select></div>
-                                        {newRequest.slotId && <div className="p-3 bg-gray-50 rounded border"><label className="text-xs font-bold text-gray-500 uppercase">會議時間</label><div className="flex gap-2 items-center"><TimeSelect value={newRequest.startTime} onChange={v=>setNewRequest({...newRequest, startTime:v})} className="flex-1"/><span className="text-gray-400">-</span><TimeSelect value={newRequest.endTime} onChange={v=>setNewRequest({...newRequest, endTime:v})} className="flex-1"/></div></div>}
-                                        <div><label className="text-sm font-bold text-gray-600">預約人</label><input type="text" className="w-full p-2 border rounded" value={newRequest.requestorName} onChange={e => setNewRequest({...newRequest, requestorName: e.target.value})} required/></div>
-                                        <div><label className="text-sm font-bold text-gray-600">事項</label><input type="text" className="w-full p-2 border rounded" value={newRequest.title} onChange={e => setNewRequest({...newRequest, title: e.target.value})} required/></div>
-                                        <div><label className="text-sm font-bold text-gray-600">備註</label><input type="text" className="w-full p-2 border rounded" value={newRequest.requestorNote} onChange={e => setNewRequest({...newRequest, requestorNote: e.target.value})}/></div>
-                                        <div className="flex gap-2"><button type="button" onClick={() => setShowAddRequest(false)} className="flex-1 py-2 bg-gray-100 rounded">取消</button><button type="submit" disabled={isLoading} className="flex-1 py-2 bg-blue-600 text-white rounded">{isLoading?'處理中...':'建立'}</button></div>
+                            <div className="fixed inset-0 bg-sky-900/30 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+                                <div className="magic-card p-8 rounded-[40px] shadow-2xl max-w-md w-full animate-fade-in-down">
+                                    <h3 className="font-bold text-2xl mb-6 text-slate-700">新增會議安排</h3>
+                                    <form onSubmit={handleAddRequest} className="space-y-5">
+                                        <div><label className="text-sm font-bold text-slate-500 ml-2 mb-1 block">選擇空檔</label><select className="w-full p-3 border-2 border-sky-100 rounded-2xl bg-sky-50/30 outline-none focus:border-pink-300 font-bold text-slate-700" value={newRequest.slotId} onChange={e=>{const s=slots.find(x=>x.id==e.target.value); if(s) setNewRequest({...newRequest, slotId: s.id, startTime:s.startTime, endTime:s.endTime});}} required><option value="">請選擇一個空檔 ✨</option>{getAvailableSlots().map(s=><option key={s.id} value={s.id}>{s.date} {s.startTime}-{s.endTime}</option>)}</select></div>
+                                        {newRequest.slotId && <div className="p-4 bg-sky-50 rounded-3xl border-2 border-sky-100"><label className="text-xs font-bold text-sky-400 uppercase mb-2 block tracking-wider">會議時間</label><div className="flex gap-2 items-center"><TimeSelect value={newRequest.startTime} onChange={v=>setNewRequest({...newRequest, startTime:v})} className="flex-1"/><span className="text-sky-300 font-bold">-</span><TimeSelect value={newRequest.endTime} onChange={v=>setNewRequest({...newRequest, endTime:v})} className="flex-1"/></div></div>}
+                                        <div><label className="text-sm font-bold text-slate-500 ml-2 mb-1 block">預約人</label><input type="text" className="w-full p-3 border-2 border-sky-100 rounded-2xl bg-sky-50/30 outline-none focus:border-pink-300 font-bold text-slate-700" value={newRequest.requestorName} onChange={e => setNewRequest({...newRequest, requestorName: e.target.value})} required/></div>
+                                        <div><label className="text-sm font-bold text-slate-500 ml-2 mb-1 block">事項</label><input type="text" className="w-full p-3 border-2 border-sky-100 rounded-2xl bg-sky-50/30 outline-none focus:border-pink-300 font-bold text-slate-700" value={newRequest.title} onChange={e => setNewRequest({...newRequest, title: e.target.value})} required/></div>
+                                        <div><label className="text-sm font-bold text-slate-500 ml-2 mb-1 block">備註</label><input type="text" className="w-full p-3 border-2 border-sky-100 rounded-2xl bg-sky-50/30 outline-none focus:border-pink-300 font-bold text-slate-700" value={newRequest.requestorNote} onChange={e => setNewRequest({...newRequest, requestorNote: e.target.value})}/></div>
+                                        <div className="flex gap-3 pt-2"><button type="button" onClick={() => setShowAddRequest(false)} className="magic-btn flex-1 py-3 bg-slate-100 text-slate-500 rounded-2xl font-bold">取消</button><button type="submit" disabled={isLoading} className="magic-btn flex-1 py-3 bg-gradient-to-r from-sky-400 to-blue-500 text-white rounded-2xl font-bold shadow-lg shadow-sky-200">{isLoading?'處理中...':'建立'}</button></div>
                                     </form>
                                 </div>
                             </div>
                         )}
 
-                        {/* Calendar View */}
                         {activeTab === 'calendar' && (
-                            <div className="bg-white rounded-xl shadow border border-gray-200 overflow-hidden">
-                                <div className="flex justify-between items-center p-4 bg-gray-50 border-b">
-                                    <button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))} className="p-2 hover:bg-gray-200 rounded-full"><Icons.ChevronLeft size={20}/></button>
-                                    <h2 className="text-lg font-bold">{currentDate.getFullYear()}年 {currentDate.getMonth() + 1}月</h2>
-                                    <button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))} className="p-2 hover:bg-gray-200 rounded-full"><Icons.ChevronRight size={20}/></button>
+                            <div className="magic-card rounded-[32px] overflow-hidden shadow-lg shadow-purple-100/50">
+                                <div className="flex justify-between items-center p-6 bg-gradient-to-r from-purple-50 to-pink-50 border-b-2 border-white">
+                                    <button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))} className="magic-btn p-3 bg-white rounded-full text-purple-400 shadow-sm hover:text-purple-600"><Icons.ChevronLeft size={24}/></button>
+                                    <h2 className="text-2xl font-extrabold text-slate-600 tracking-wider">{currentDate.getFullYear()}年 <span className="text-purple-500">{currentDate.getMonth() + 1}月</span></h2>
+                                    <button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))} className="magic-btn p-3 bg-white rounded-full text-purple-400 shadow-sm hover:text-purple-600"><Icons.ChevronRight size={24}/></button>
                                 </div>
-                                <div className="grid grid-cols-7 border-b bg-gray-50">{WEEKDAYS.map(d => <div key={d} className="py-2 text-center text-xs font-bold text-gray-500">{d}</div>)}</div>
-                                <div className="grid grid-cols-7 auto-rows-fr bg-white">
-                                    {Array.from({ length: getFirstDayOfMonth(currentDate.getFullYear(), currentDate.getMonth()) }).map((_, i) => <div key={`e-${i}`} className="min-h-[100px] border-b border-r bg-gray-50/30"></div>)}
+                                <div className="grid grid-cols-7 border-b border-purple-50 bg-white/50">{WEEKDAYS.map(d => <div key={d} className="py-4 text-center text-sm font-bold text-slate-400">{d}</div>)}</div>
+                                <div className="grid grid-cols-7 auto-rows-fr bg-white/80">
+                                    {Array.from({ length: getFirstDayOfMonth(currentDate.getFullYear(), currentDate.getMonth()) }).map((_, i) => <div key={`e-${i}`} className="min-h-[120px] border-b border-r border-purple-50 bg-slate-50/30"></div>)}
                                     {Array.from({ length: getDaysInMonth(currentDate.getFullYear(), currentDate.getMonth()) }).map((_, i) => {
                                         const day = i + 1;
                                         const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth()+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
                                         const isToday = new Date().toDateString() === new Date(currentDate.getFullYear(), currentDate.getMonth(), day).toDateString();
                                         const daySlots = slots.filter(s => s.date === dateStr).sort((a,b) => a.startTime.localeCompare(b.startTime));
                                         return (
-                                            <div key={day} className={`min-h-[120px] border-b border-r p-1 relative hover:bg-slate-50 group ${isToday ? 'bg-amber-50' : ''}`}>
-                                                <div className="flex justify-between mb-1"><span className={`text-sm font-bold w-6 h-6 flex items-center justify-center rounded-full ${isToday?'bg-amber-500 text-white':'text-gray-700'}`}>{day}</span>{daySlots.length===0 && <button onClick={()=>{setNewSlot({...newSlot, date: dateStr}); setShowAddSlot(true);}} className="hidden group-hover:block text-emerald-500"><Icons.Plus size={16}/></button>}</div>
-                                                <div className="space-y-1">
+                                            <div key={day} className={`min-h-[120px] border-b border-r border-purple-50 p-2 relative hover:bg-sky-50 transition-colors group ${isToday ? 'bg-pink-50/50' : ''}`}>
+                                                <div className="flex justify-between mb-2">
+                                                    <span className={`text-sm font-bold w-8 h-8 flex items-center justify-center rounded-full ${isToday?'bg-gradient-to-tr from-pink-400 to-rose-400 text-white shadow-md shadow-pink-200':'text-slate-600'}`}>{day}</span>
+                                                    {daySlots.length===0 && <button onClick={()=>{setNewSlot({...newSlot, date: dateStr}); setShowAddSlot(true);}} className="hidden group-hover:flex w-8 h-8 items-center justify-center text-emerald-400 bg-emerald-50 rounded-full hover:bg-emerald-100 transition-all"><Icons.Plus size={18}/></button>}
+                                                </div>
+                                                <div className="space-y-1.5">
                                                     {daySlots.map(slot => {
                                                         const reqs = getRequestsBySlotId(slot.id);
-                                                        if(slot.type === 'occupied') return <div key={slot.id} className="text-[10px] p-1 bg-gray-100 text-gray-500 rounded border flex items-center gap-1"><Icons.Ban size={10}/> {slot.startTime}-{slot.endTime}</div>;
+                                                        if(slot.type === 'occupied') return <div key={slot.id} className="text-[11px] p-2 bg-slate-100 text-slate-500 rounded-xl border border-slate-200 flex flex-wrap gap-1 font-bold tabular-nums"><div className="flex items-center gap-1 w-full"><Icons.Ban size={12}/> {slot.startTime}-{slot.endTime}</div><div className="truncate w-full font-normal opacity-80">{slot.note}</div></div>;
                                                         return (
-                                                            <div key={slot.id} onClick={()=>{setNewRequest({...newRequest, slotId: slot.id, startTime: slot.startTime, endTime: slot.endTime}); setShowAddRequest(true);}} className="text-[10px] p-1 bg-emerald-50 border border-emerald-200 rounded cursor-pointer hover:bg-emerald-100">
-                                                                <div className="font-bold text-emerald-700 flex justify-between"><span>{slot.startTime}-{slot.endTime}</span>{reqs.length===0 && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>}</div>
-                                                                {reqs.map(r => <div key={r.id} onClick={(e)=>{e.stopPropagation(); setActiveTab('dashboard');}} className={`mt-1 p-1 rounded border flex gap-1 ${r.step===4?'bg-emerald-600 text-white border-emerald-700':'bg-white text-blue-800 border-blue-200'}`}>{r.step===4?<Icons.CheckCircle size={10}/>:<Icons.CornerDownRight size={10}/>}<div className="truncate">{r.title}</div></div>)}
+                                                            <div key={slot.id} onClick={()=>{setNewRequest({...newRequest, slotId: slot.id, startTime: slot.startTime, endTime: slot.endTime}); setShowAddRequest(true);}} className="text-[11px] p-2 bg-emerald-50 border border-emerald-100 rounded-xl cursor-pointer hover:bg-emerald-100 hover:scale-[1.02] transition-transform shadow-sm">
+                                                                <div className="font-bold text-emerald-600 flex justify-between tabular-nums"><span>{slot.startTime}-{slot.endTime}</span>{reqs.length===0 && <span className="w-2 h-2 rounded-full bg-emerald-400"></span>}</div>
+                                                                {reqs.map(r => <div key={r.id} onClick={(e)=>{e.stopPropagation(); setActiveTab('dashboard');}} className={`mt-1.5 p-1.5 rounded-lg border flex gap-1 items-start ${r.step===4?'bg-gradient-to-r from-emerald-400 to-teal-400 text-white border-transparent shadow-sm':'bg-white text-sky-700 border-sky-100'}`}>{r.step===4?<Icons.CheckCircle size={12}/>:<Icons.CornerDownRight size={12}/>}<div className="truncate leading-tight font-bold">{r.title}</div></div>)}
                                                             </div>
                                                         );
                                                     })}
@@ -340,43 +438,68 @@
                             </div>
                         )}
 
-                        {/* Dashboard View */}
                         {activeTab === 'dashboard' && (
-                            <div className="grid gap-3">
-                                <div className="flex justify-between items-center bg-blue-50 p-4 rounded border border-blue-100 mb-2"><div><h2 className="font-bold text-blue-900">會議看板</h2></div><button onClick={() => setShowAddRequest(true)} className="bg-blue-600 text-white px-3 py-1.5 rounded text-sm flex gap-1"><Icons.Plus size={16}/> 新增</button></div>
-                                {requests.sort((a,b)=>a.step===4?1:-1).map(req => (
-                                    <div key={req.id} className={`bg-white rounded shadow-sm border p-3 relative ${req.step===4?'bg-emerald-50/50 border-emerald-100':''}`}>
-                                        <div className={`absolute left-0 top-0 bottom-0 w-1 ${STEPS[req.step].color.split(' ')[0]}`}></div>
-                                        <div className="pl-3 flex flex-col sm:flex-row justify-between gap-3">
-                                            <div className="flex-1">
-                                                <div className="flex items-center gap-2 mb-1"><span className={`text-[10px] px-2 py-0.5 rounded-full border flex items-center gap-1 ${STEPS[req.step].color}`}>{STEPS[req.step].icon} {STEPS[req.step].label}</span><span className="text-xs text-gray-400">{new Date(req.updatedAt).toLocaleDateString()}</span></div>
-                                                <h3 className={`font-bold ${req.step===4?'text-emerald-800 line-through':''}`}>{req.title}</h3>
-                                                <div className="text-xs text-gray-500 mt-1 flex items-center gap-2"><Icons.User size={12}/> {req.requestorName} <span className="text-gray-300">|</span> <Icons.Calendar size={12}/> {getSlotDisplay(req.slotId).split(' ')[0]} {req.startTime}-{req.endTime}</div>
-                                                {req.requestorNote && <div className="text-xs text-gray-500 mt-1 bg-gray-50 p-1 rounded inline-block">備註: {req.requestorNote}</div>}
-                                            </div>
-                                            <div className="flex items-end gap-2">
-                                                {req.step<4 ? <button onClick={()=>handleUpdateStep(req.id, req.step+1)} disabled={isLoading} className="bg-slate-800 text-white text-xs px-3 py-1.5 rounded flex items-center gap-1">下一步 <Icons.ArrowRight size={12}/></button> : <span className="text-emerald-600 text-xs font-bold flex items-center gap-1"><Icons.CheckCircle size={12}/> 完成</span>}
-                                                {req.step>1 && req.step<4 && <button onClick={()=>handleUpdateStep(req.id, req.step-1)} disabled={isLoading} className="text-gray-400 hover:text-gray-600 text-xs px-2">返回</button>}
-                                                <button onClick={()=>handleDeleteRequest(req.id)} disabled={isLoading} className="text-gray-300 hover:text-red-500 p-1"><Icons.Trash2 size={16}/></button>
+                            <div className="grid gap-4">
+                                <div className="flex justify-between items-center bg-white p-5 rounded-[24px] border-2 border-sky-100 shadow-sm"><div><h2 className="font-bold text-sky-800 text-lg">會議看板</h2></div><button onClick={() => setShowAddRequest(true)} className="magic-btn bg-sky-500 text-white px-5 py-2.5 rounded-full text-sm font-bold flex gap-2 shadow-lg shadow-sky-200"><Icons.Plus size={18}/> 新增</button></div>
+                                {requests.sort((a,b)=>a.step===4?1:-1).map(req => {
+                                    const slotDate = getSlotDisplay(req.slotId).split(' ')[0];
+                                    return (
+                                        <div key={req.id} className={`bg-white rounded-[24px] shadow-sm border-2 p-5 relative overflow-hidden transition-all hover:shadow-md ${req.step===4?'border-emerald-100 bg-emerald-50/30':'border-white'}`}>
+                                            <div className={`absolute left-0 top-0 bottom-0 w-2 ${STEPS[req.step].color.split(' ')[0]}`}></div>
+                                            <div className="pl-4 flex flex-col sm:flex-row justify-between gap-4">
+                                                <div className="flex-1">
+                                                    <div className="flex items-center gap-3 mb-2">
+                                                        <span className={`text-[11px] px-3 py-1 rounded-full border font-bold flex items-center gap-1.5 ${STEPS[req.step].color}`}>{STEPS[req.step].icon} {STEPS[req.step].label}</span>
+                                                        <span className="text-xs text-slate-400 font-bold tabular-nums">{new Date(req.updatedAt).toLocaleDateString()}</span>
+                                                    </div>
+                                                    <h3 className={`font-extrabold text-lg mb-2 ${req.step===4?'text-emerald-700':'text-slate-700'}`}>{req.title}</h3>
+                                                    <div className="text-sm text-slate-500 flex flex-wrap items-center gap-4 bg-slate-50 p-2 rounded-xl inline-flex mb-2">
+                                                        <span className="flex items-center gap-1"><Icons.User size={14} className="text-pink-400"/> <b>{req.requestorName}</b></span>
+                                                        <span className="text-slate-300">|</span>
+                                                        <span className="flex items-center gap-1 tabular-nums"><Icons.Calendar size={14} className="text-sky-400"/> <b>{slotDate} ({WEEKDAYS_SIMPLE[new Date(slotDate).getUTCDay()]}) {req.startTime}-{req.endTime}</b></span>
+                                                    </div>
+                                                    {req.requestorNote && <div className="text-xs text-slate-500 mt-2 bg-slate-50 p-2 rounded-lg border border-slate-100 flex gap-2"><span className="font-bold text-slate-400">備註:</span> {req.requestorNote}</div>}
+                                                </div>
+                                                <div className="flex items-end gap-2">
+                                                    {req.step<4 ? <button onClick={()=>handleUpdateStep(req.id, req.step+1)} disabled={isLoading} className="magic-btn bg-slate-800 text-white text-xs px-4 py-2 rounded-full flex items-center gap-1.5 font-bold shadow-lg shadow-slate-300/50 hover:bg-slate-700">下一步 <Icons.ArrowRight size={12}/></button> : <span className="bg-emerald-100 text-emerald-600 px-4 py-2 rounded-full text-xs font-bold flex items-center gap-1.5"><Icons.CheckCircle size={14}/> 完成</span>}
+                                                    {req.step>1 && req.step<4 && <button onClick={()=>handleUpdateStep(req.id, req.step-1)} disabled={isLoading} className="text-slate-400 hover:text-slate-600 text-xs px-3 font-bold underline">返回</button>}
+                                                    <button onClick={()=>handleDeleteRequest(req.id)} disabled={isLoading} className="magic-btn text-rose-300 hover:text-rose-500 p-2 bg-rose-50 rounded-full ml-2"><Icons.Trash2 size={18}/></button>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                ))}
-                                {requests.length===0 && <div className="text-center py-10 text-gray-400 border-2 border-dashed rounded">尚無會議安排</div>}
+                                    );
+                                })}
+                                {requests.length===0 && <div className="text-center py-12 text-slate-400 border-2 border-dashed border-sky-200 bg-white/50 rounded-[30px] font-bold flex flex-col items-center gap-2"><Icons.Carriage size={48} className="text-sky-200 mb-2"/>目前沒有魔法會議安排喔 ✨</div>}
                             </div>
                         )}
 
-                        {/* Slots List View */}
                         {activeTab === 'slots' && (
-                             <div className="bg-white rounded shadow overflow-hidden">
+                             <div className="magic-card rounded-[32px] overflow-hidden shadow-lg shadow-blue-50">
                                 <table className="w-full text-left text-sm">
-                                    <thead className="bg-gray-50 border-b"><tr><th className="p-3">時間</th><th className="p-3">狀態</th><th className="p-3 text-right">操作</th></tr></thead>
-                                    <tbody className="divide-y">
+                                    <thead className="bg-gradient-to-r from-sky-50 to-white border-b border-sky-100"><tr><th className="p-5 font-bold text-sky-700">日期時間</th><th className="p-5 font-bold text-sky-700">備註/事項</th><th className="p-5 font-bold text-sky-700">狀態</th><th className="p-5 text-right font-bold text-sky-700">操作</th></tr></thead>
+                                    <tbody className="divide-y divide-sky-50">
                                         {slots.sort((a,b)=>a.date.localeCompare(b.date)).map(slot=>(
-                                            <tr key={slot.id} className="hover:bg-gray-50">
-                                                <td className="p-3"><div>{slot.date}</div><div className="text-blue-600 font-mono">{slot.startTime}-{slot.endTime}</div><div className="text-xs text-gray-500">{slot.note}</div></td>
-                                                <td className="p-3">{slot.type==='occupied'?<span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded text-xs">已佔用</span>:<span className="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded text-xs">有空</span>}</td>
-                                                <td className="p-3 text-right"><button onClick={()=>handleDeleteSlot(slot.id)} className="text-gray-400 hover:text-red-500"><Icons.Trash2 size={16}/></button></td>
+                                            <tr key={slot.id} className="hover:bg-sky-50/50 transition-colors">
+                                                <td className="p-5">
+                                                    <div className="flex flex-col gap-1">
+                                                        <div className="flex items-baseline gap-2 pl-2">
+                                                            <span className="font-extrabold text-slate-700 text-base tabular-nums tracking-wide">{slot.date}</span>
+                                                            <span className="text-slate-400 text-sm font-bold">({WEEKDAYS_SIMPLE[new Date(slot.date).getUTCDay()]})</span>
+                                                        </div>
+                                                        <div className="text-sky-600 font-bold text-sm bg-sky-50 px-2 py-1 rounded-lg w-fit tabular-nums">
+                                                            {slot.startTime} - {slot.endTime}
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="p-5">
+                                                    {slot.type === 'occupied' ? <span className="font-bold text-slate-700 flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-rose-400"></span> {slot.note}</span> : <span className="text-slate-400 font-medium">{slot.note}</span>}
+                                                </td>
+                                                <td className="p-5">{slot.type==='occupied'?<span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-full text-xs font-bold border border-slate-200">已佔用</span>:<span className="bg-emerald-100 text-emerald-600 px-3 py-1 rounded-full text-xs font-bold border border-emerald-200">有空</span>}</td>
+                                                <td className="p-5 text-right">
+                                                    <button onClick={()=>handleDeleteSlot(slot.id)} className="text-slate-300 hover:text-rose-500 p-2 rounded-full hover:bg-rose-50 transition-colors" disabled={deletingId === slot.id}>
+                                                        {deletingId === slot.id ? <div className="loader-sm"></div> : <Icons.Trash2 size={18}/>}
+                                                    </button>
+                                                </td>
                                             </tr>
                                         ))}
                                     </tbody>
