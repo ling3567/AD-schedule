@@ -49,10 +49,8 @@
         }
         .magic-btn:active { transform: scale(0.92); }
         
-        /* 優化捲軸樣式，避免雙捲軸視覺干擾 */
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: rgba(203, 213, 225, 0.5); border-radius: 20px; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
         .tabular-nums { font-variant-numeric: tabular-nums; }
 
@@ -62,7 +60,7 @@
             top: 0;
             z-index: 10;
             backdrop-filter: blur(8px);
-            background: rgba(240, 249, 255, 0.95); /* Sky-50 with opacity */
+            background: rgba(240, 249, 255, 0.95);
         }
     </style>
 </head>
@@ -136,6 +134,7 @@
             const [collapsedMonths, setCollapsedMonths] = useState({});
 
             // Forms
+            // startDate, endDate for Range support
             const [newSlot, setNewSlot] = useState({ startDate: '', endDate: '', startTime: '09:00', endTime: '10:00', note: '', type: 'available' });
             const [newRequest, setNewRequest] = useState({ title: '', slotId: '', requestorNote: '', requestorName: '依玲', startTime: '', endTime: '' });
 
@@ -205,22 +204,25 @@
                         setSlots(fetchedSlots);
                         setRequests(normalizeData(data.requests || []));
                         
+                        // 智能收納：預設收合非當月的資料
                         const groups = groupSlotsByMonth(fetchedSlots);
                         const today = new Date();
                         const currentMonthKey = `${today.getFullYear()}年 ${today.getMonth() + 1}月`;
                         
-                        // Find index of current month
-                        const currentIdx = groups.findIndex(g => g.month === currentMonthKey);
+                        const newCollapsed = {};
                         
-                        if (currentIdx > -1) {
-                             const newCollapsed = {};
-                             groups.forEach((g, idx) => {
-                                 if (idx < currentIdx) {
-                                     newCollapsed[g.month] = true;
-                                 }
-                             });
-                             setCollapsedMonths(prev => ({...newCollapsed, ...prev}));
-                        }
+                        // 預設全收合，除了當月
+                        groups.forEach(g => {
+                             if (g.month !== currentMonthKey) {
+                                 newCollapsed[g.month] = true;
+                             }
+                        });
+                        
+                        // 只在初次載入或切換回來時套用，避免干擾使用者操作？
+                        // 這裡簡單處理：每次重新整理資料時，都重置收合狀態以保持乾淨，除了當月。
+                        // 如果使用者不希望這樣，可以加個狀態判斷。目前先這樣確保"預設"行為。
+                        setCollapsedMonths(newCollapsed);
+                        
                         setError('');
                     }
                 } catch (e) { console.error("Refresh failed:", e); }
@@ -235,19 +237,13 @@
                             setSlots(fetchedSlots);
                             setRequests(normalizeData(data.requests || []));
                             
+                            // 初始載入：收合非當月
                             const groups = groupSlotsByMonth(fetchedSlots);
                             const today = new Date();
                             const currentMonthKey = `${today.getFullYear()}年 ${today.getMonth() + 1}月`;
                             const newCollapsed = {};
-                            
-                            const sortedGroups = groups; 
-                            const currentIdx = sortedGroups.findIndex(g => g.month === currentMonthKey);
-                            
-                            sortedGroups.forEach((g, idx) => {
-                                const [gY, gM] = g.month.replace('年 ', '-').replace('月', '').split('-').map(Number);
-                                if (gY < today.getFullYear() || (gY === today.getFullYear() && gM < today.getMonth() + 1)) {
-                                    newCollapsed[g.month] = true;
-                                }
+                            groups.forEach(g => {
+                                if (g.month !== currentMonthKey) newCollapsed[g.month] = true;
                             });
                             setCollapsedMonths(newCollapsed);
                         }
@@ -294,7 +290,11 @@
                     return new Date(y1, m1 - 1) - new Date(y2, m2 - 1);
                 }).map(key => ({
                     month: key,
-                    items: groups[key].sort((a, b) => a.date.localeCompare(b.date))
+                    items: groups[key].sort((a, b) => {
+                        const dateDiff = a.date.localeCompare(b.date);
+                        if(dateDiff !== 0) return dateDiff;
+                        return a.startTime.localeCompare(b.startTime);
+                    })
                 }));
             };
 
@@ -306,17 +306,32 @@
 
             const handleSaveSlot = async (e) => {
                 e.preventDefault();
+                
                 const originalSlots = [...slots];
+                
                 if (editingSlotId) {
-                    const updatedSlot = { ...newSlot, id: editingSlotId, date: newSlot.startDate };
+                    // Update Mode (Single Slot)
+                    const updatedSlot = { 
+                        ...newSlot, 
+                        id: editingSlotId,
+                        date: newSlot.startDate 
+                    };
+                    
                     setSlots(prev => prev.map(s => s.id === editingSlotId ? updatedSlot : s));
                     setNewSlot({ startDate: '', endDate: '', startTime: '09:00', endTime: '10:00', note: '', type: 'available' });
                     setEditingSlotId(null);
                     setShowAddSlot(false);
-                    try { await callApi('updateSlot', updatedSlot, false); } 
-                    catch (err) { alert("修改失敗: " + err.message); setSlots(originalSlots); }
+
+                    try {
+                        await callApi('updateSlot', updatedSlot, false);
+                    } catch (err) {
+                        alert("修改失敗: " + err.message);
+                        setSlots(originalSlots);
+                    }
                 } else {
+                    // Add Mode (Supports Range)
                     const dates = getDatesInRange(newSlot.startDate, newSlot.endDate || newSlot.startDate);
+                    
                     const newSlotsData = dates.map(d => ({
                         date: d,
                         startTime: newSlot.startTime,
@@ -325,12 +340,19 @@
                         type: newSlot.type,
                         id: Date.now() + Math.random()
                     }));
+                    
                     setSlots(prev => [...prev, ...newSlotsData]);
                     setNewSlot({ startDate: '', endDate: '', startTime: '09:00', endTime: '10:00', note: '', type: 'available' });
                     setShowAddSlot(false);
+
                     try {
-                        for (const slotData of newSlotsData) { await callApi('addSlot', slotData, false); }
-                    } catch (err) { alert("部分新增失敗，請重新整理確認"); refreshData(); }
+                        for (const slotData of newSlotsData) {
+                            await callApi('addSlot', slotData, false);
+                        }
+                    } catch (err) {
+                        alert("部分新增失敗，請重新整理確認");
+                        refreshData();
+                    }
                 }
             };
 
@@ -350,12 +372,20 @@
             const handleDeleteSlot = async (id) => {
                 if (!id) return;
                 if (!confirm('確定刪除此時段？將一併刪除該時段下所有會議。')) return;
+                
                 const originalSlots = [...slots];
                 const originalRequests = [...requests];
+
                 setSlots(prev => prev.filter(s => s.id !== id));
                 setRequests(prev => prev.filter(r => r.slotId !== id));
-                try { await callApi('deleteSlot', { id }, false); }
-                catch (err) { alert("刪除失敗: " + err.message); setSlots(originalSlots); setRequests(originalRequests); }
+
+                try {
+                    await callApi('deleteSlot', { id }, false);
+                } catch (err) {
+                    alert("刪除失敗: " + err.message);
+                    setSlots(originalSlots);
+                    setRequests(originalRequests);
+                }
             };
 
             const isTimeOverlapping = (slotId, start, end) => {
@@ -370,29 +400,46 @@
                 }
                 const tempId = Date.now();
                 const reqData = { ...newRequest, id: tempId, slotId: parseInt(newRequest.slotId), step: 1, updatedAt: new Date().toISOString() };
+                
                 setRequests(prev => [...prev, reqData]);
                 setNewRequest({ title: '', slotId: '', requestorNote: '', requestorName: '依玲', startTime: '', endTime: '' });
                 setShowAddRequest(false);
                 setActiveTab('dashboard');
-                try { await callApi('addRequest', reqData, false); }
-                catch(err) { alert("新增失敗: " + err.message); setRequests(prev => prev.filter(r => r.id !== tempId)); }
+
+                try {
+                    await callApi('addRequest', reqData, false);
+                } catch(err) {
+                    alert("新增失敗: " + err.message);
+                    setRequests(prev => prev.filter(r => r.id !== tempId));
+                }
             };
 
             const handleUpdateStep = async (reqId, newStep) => {
                 const originalRequests = [...requests];
                 setRequests(prev => prev.map(r => r.id === reqId ? { ...r, step: newStep, updatedAt: new Date().toISOString() } : r));
-                try { await callApi('updateRequestStep', { id: reqId, step: newStep, updatedAt: new Date().toISOString() }, false); }
-                catch (err) { console.error("Update step failed", err); setRequests(originalRequests); }
+                try {
+                    await callApi('updateRequestStep', { id: reqId, step: newStep, updatedAt: new Date().toISOString() }, false);
+                } catch (err) {
+                    console.error("Update step failed", err);
+                    setRequests(originalRequests);
+                }
             };
 
             const handleDeleteRequest = async (id) => {
                 if (!confirm('確定取消此會議安排？')) return;
+                
                 const originalRequests = [...requests];
                 setRequests(prev => prev.filter(r => r.id !== id));
-                try { await callApi('deleteRequest', { id }, false); }
-                catch (err) { alert("刪除失敗: " + err.message); setRequests(originalRequests); }
+
+                try {
+                    await callApi('deleteRequest', { id }, false);
+                } catch (err) {
+                    alert("刪除失敗: " + err.message);
+                    setRequests(originalRequests);
+                }
             };
 
+            // Toggle Full Day - Set to 00:00 - 23:45 to match dropdown logic
             const toggleFullDay = () => {
                 if (newSlot.startTime === '00:00' && newSlot.endTime === '23:45') {
                     setNewSlot({ ...newSlot, startTime: '09:00', endTime: '10:00' });
@@ -493,7 +540,7 @@
                                     <form onSubmit={handleSaveSlot} className="space-y-5">
                                         <div className="flex gap-3 p-1 bg-slate-100 rounded-full">
                                             <button type="button" onClick={() => setNewSlot({...newSlot, type: 'available'})} className={`flex-1 py-3 rounded-full font-bold flex gap-2 justify-center transition-all ${newSlot.type === 'available' ? 'bg-white text-emerald-500 shadow-md' : 'text-slate-400'}`}><Icons.CheckCircle size={18}/> 有空</button>
-                                            <button type="button" onClick={() => setNewSlot({...newSlot, type: 'occupied'})} className={`flex-1 py-3 rounded-full font-bold flex gap-2 justify-center transition-all ${newSlot.type === 'occupied' ? 'bg-white text-rose-500 shadow-md' : 'text-slate-400'}`}><Icons.Ban size={18}/> 已佔用</button>
+                                            <button type="button" onClick={() => setNewSlot({...newSlot, type: 'occupied'})} className={`flex-1 py-3 rounded-full font-bold flex gap-2 justify-center transition-all ${newSlot.type === 'occupied' ? 'bg-white text-rose-500 shadow-md' : 'text-slate-400'}`}><Icons.Ban size={18}/> 滿檔</button>
                                         </div>
                                         
                                         <div className="flex flex-col sm:flex-row gap-3">
@@ -517,14 +564,16 @@
 
                                         <div className="p-4 bg-slate-50 rounded-3xl border border-slate-100 space-y-3">
                                             <label className="text-xs font-bold text-slate-400 uppercase block tracking-wider">時間設定</label>
-                                            <div className="flex gap-2 items-center justify-between">
-                                                <div className="flex-1"><TimeSelect value={newSlot.startTime} onChange={v => setNewSlot({...newSlot, startTime: v})} /></div>
-                                                <span className="text-slate-300 font-bold">-</span>
-                                                <div className="flex-1"><TimeSelect value={newSlot.endTime} onChange={v => setNewSlot({...newSlot, endTime: v})} /></div>
+                                            <div className="flex flex-col gap-3">
+                                                <div className="flex gap-2 items-center w-full">
+                                                    <div className="flex-1"><TimeSelect value={newSlot.startTime} onChange={v => setNewSlot({...newSlot, startTime: v})} /></div>
+                                                    <span className="text-slate-300 font-bold">-</span>
+                                                    <div className="flex-1"><TimeSelect value={newSlot.endTime} onChange={v => setNewSlot({...newSlot, endTime: v})} /></div>
+                                                </div>
+                                                <button type="button" onClick={toggleFullDay} className={`w-full px-4 py-3 rounded-2xl text-sm font-bold transition-all border-2 flex items-center justify-center gap-2 ${newSlot.startTime === '00:00' && newSlot.endTime === '23:45' ? 'bg-purple-100 text-purple-600 border-purple-200' : 'bg-white text-slate-400 border-slate-200 hover:bg-slate-50'}`}>
+                                                    <Icons.Star size={16}/> {newSlot.startTime === '00:00' && newSlot.endTime === '23:45' ? '✨ 全天時段' : '設為全天'}
+                                                </button>
                                             </div>
-                                            <button type="button" onClick={toggleFullDay} className={`w-full px-4 py-3 rounded-2xl text-sm font-bold transition-all border-2 flex items-center justify-center gap-2 ${newSlot.startTime === '00:00' && newSlot.endTime === '23:45' ? 'bg-purple-100 text-purple-600 border-purple-200' : 'bg-white text-slate-400 border-slate-200 hover:bg-slate-50'}`}>
-                                                <Icons.Star size={16}/> {newSlot.startTime === '00:00' && newSlot.endTime === '23:45' ? '✨ 全天時段' : '設為全天'}
-                                            </button>
                                         </div>
 
                                         <div>
@@ -576,7 +625,7 @@
                                                 </div>
                                                 <div className="space-y-1.5">
                                                     {daySlots.map(slot => {
-                                                        const reqs = getRequestsBySlotId(slot.id);
+                                                        const reqs = getRequestsBySlotId(slot.id).sort((a, b) => a.startTime.localeCompare(b.startTime));
                                                         if(slot.type === 'occupied') return <div key={slot.id} className="text-[11px] p-2 bg-slate-100 text-slate-500 rounded-xl border border-slate-200 flex flex-wrap gap-1 font-bold tabular-nums"><div className="flex items-center gap-1 w-full"><Icons.Ban size={12}/> {slot.startTime}-{slot.endTime}</div><div className="truncate w-full font-normal opacity-80">{slot.note}</div></div>;
                                                         return (
                                                             <div key={slot.id} onClick={()=>{setNewRequest({...newRequest, slotId: slot.id, startTime: slot.startTime, endTime: slot.endTime}); setShowAddRequest(true);}} className="text-[11px] p-2 bg-emerald-50 border border-emerald-100 rounded-xl cursor-pointer hover:bg-emerald-100 hover:scale-[1.02] transition-transform shadow-sm">
@@ -596,7 +645,14 @@
                         {activeTab === 'dashboard' && (
                             <div className="grid gap-4">
                                 <div className="flex justify-between items-center bg-white p-5 rounded-[24px] border-2 border-sky-100 shadow-sm"><div><h2 className="font-bold text-sky-800 text-lg">會議看板</h2></div><button onClick={() => setShowAddRequest(true)} className="magic-btn bg-sky-500 text-white px-5 py-2.5 rounded-full text-sm font-bold flex gap-2 shadow-lg shadow-sky-200"><Icons.Plus size={18}/> 新增</button></div>
-                                {requests.sort((a,b)=>a.step===4?1:-1).map(req => {
+                                {requests.sort((a, b) => {
+                                    const slotA = slots.find(s => s.id == a.slotId);
+                                    const slotB = slots.find(s => s.id == b.slotId);
+                                    if (!slotA || !slotB) return 0;
+                                    const dateA = slotA.date + (a.startTime || slotA.startTime);
+                                    const dateB = slotB.date + (b.startTime || slotB.startTime);
+                                    return dateA.localeCompare(dateB);
+                                }).map(req => {
                                     const slotDate = getSlotDisplay(req.slotId).split(' ')[0];
                                     return (
                                         <div key={req.id} className={`bg-white rounded-[24px] shadow-sm border-2 p-5 relative overflow-hidden transition-all hover:shadow-md ${req.step===4?'border-emerald-100 bg-emerald-50/30':'border-white'}`}>
@@ -645,8 +701,8 @@
                                         </div>
                                         
                                         {!collapsedMonths[group.month] && (
-                                            <table className="w-full text-left text-sm">
-                                                <thead className="bg-white border-b border-sky-100"><tr><th className="p-5 font-bold text-sky-700">日期時間</th><th className="p-5 font-bold text-sky-700">備註/事項</th><th className="p-5 font-bold text-sky-700">狀態</th><th className="p-5 text-right font-bold text-sky-700">操作</th></tr></thead>
+                                            <table className="w-full text-left text-sm table-fixed">
+                                                <thead className="bg-white border-b border-sky-100"><tr><th className="p-5 font-bold text-sky-700 w-[220px]">日期時間</th><th className="p-5 font-bold text-sky-700 w-auto">備註/事項</th><th className="p-5 font-bold text-sky-700 w-[100px] text-center">狀態</th><th className="p-5 text-right font-bold text-sky-700 w-[100px]">操作</th></tr></thead>
                                                 <tbody className="divide-y divide-sky-50">
                                                     {group.items.map(slot=>(
                                                         <tr key={slot.id} className="hover:bg-sky-50/50 transition-colors">
@@ -664,7 +720,7 @@
                                                             <td className="p-5">
                                                                 {slot.type === 'occupied' ? <span className="font-bold text-slate-700 flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-rose-400"></span> {slot.note}</span> : <span className="text-slate-400 font-medium">{slot.note}</span>}
                                                             </td>
-                                                            <td className="p-5">{slot.type==='occupied'?<span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-full text-xs font-bold border border-slate-200">已佔用</span>:<span className="bg-emerald-100 text-emerald-600 px-3 py-1 rounded-full text-xs font-bold border border-emerald-200">有空</span>}</td>
+                                                            <td className="p-5 text-center">{slot.type==='occupied'?<span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-full text-xs font-bold border border-slate-200 whitespace-nowrap">滿檔</span>:<span className="bg-emerald-100 text-emerald-600 px-3 py-1 rounded-full text-xs font-bold border border-emerald-200 whitespace-nowrap">有空</span>}</td>
                                                             <td className="p-5 text-right">
                                                                 <div className="flex gap-2 justify-end">
                                                                     <button onClick={()=>handleEditSlot(slot)} className="text-slate-400 hover:text-sky-500 p-2 rounded-full hover:bg-sky-50 transition-colors">
