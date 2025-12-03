@@ -49,8 +49,10 @@
         }
         .magic-btn:active { transform: scale(0.92); }
         
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        /* 優化捲軸樣式 */
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: rgba(203, 213, 225, 0.5); border-radius: 20px; }
         
         .tabular-nums { font-variant-numeric: tabular-nums; }
 
@@ -102,6 +104,8 @@
             CornerDownRight: (p) => <Icon {...p} path={<><polyline points="15 10 20 15 15 20"></polyline><path d="M4 4v7a4 4 0 0 0 4 4h12"></path></>} />,
             Settings: (p) => <Icon {...p} path={<><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></>} />,
             Star: (p) => <Icon {...p} path={<><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></>} />,
+            Archive: (p) => <Icon {...p} path={<><polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line></>} />,
+            Fire: (p) => <Icon {...p} path={<><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.1.2-2.2.6-3.3.3.3.5.6.9.9z"></path></>} />,
             
             Castle: (p) => <Icon {...p} viewBox="0 0 24 24" path={<><path d="M2,22h20V10l-4-4v2h-2V6l-4-4L8,6v2H6v-2L2,10V22z M4,12h2v2H4V12z M4,16h2v2H4V16z M8,8h2v2H8V8z M8,12h2v2H8V12z M8,16h2v2H8V16z M14,8h2v2h-2V8z M14,12h2v2h-2V12z M14,16h2v2h-2V16z M18,12h2v2h-2V12z M18,16h2v2h-2V16z M10,22v-4h4v4H10z"/></>} />,
             Carriage: (p) => <Icon {...p} viewBox="0 0 24 24" path={<><circle cx="12" cy="13" r="8"></circle><circle cx="5.5" cy="20.5" r="2.5"></circle><circle cx="18.5" cy="20.5" r="2.5"></circle><path d="M12,5V2"></path><path d="M12,13h.01"></path><path d="M5.5,13H3"></path><path d="M18.5,13H21"></path></>} />,
@@ -122,6 +126,7 @@
             
             // UI
             const [activeTab, setActiveTab] = useState('calendar');
+            const [dashboardTab, setDashboardTab] = useState('active'); // 'active' | 'completed'
             const [showAddSlot, setShowAddSlot] = useState(false);
             const [showAddRequest, setShowAddRequest] = useState(false);
             const [showSettings, setShowSettings] = useState(false);
@@ -132,6 +137,7 @@
             
             // Grouping State (Months collapsed/expanded)
             const [collapsedMonths, setCollapsedMonths] = useState({});
+            const [historyCollapsedMonths, setHistoryCollapsedMonths] = useState({});
 
             // Forms
             // startDate, endDate for Range support
@@ -204,25 +210,19 @@
                         setSlots(fetchedSlots);
                         setRequests(normalizeData(data.requests || []));
                         
-                        // 智能收納：預設收合非當月的資料
-                        const groups = groupSlotsByMonth(fetchedSlots);
+                        // Auto-collapse slots list (collapse all except current month)
+                        const slotGroups = groupSlotsByMonth(fetchedSlots);
                         const today = new Date();
                         const currentMonthKey = `${today.getFullYear()}年 ${today.getMonth() + 1}月`;
-                        
                         const newCollapsed = {};
-                        
-                        // 預設全收合，除了當月
-                        groups.forEach(g => {
-                             if (g.month !== currentMonthKey) {
-                                 newCollapsed[g.month] = true;
-                             }
+                        slotGroups.forEach(g => {
+                             if (g.month !== currentMonthKey) newCollapsed[g.month] = true;
                         });
-                        
-                        // 只在初次載入或切換回來時套用，避免干擾使用者操作？
-                        // 這裡簡單處理：每次重新整理資料時，都重置收合狀態以保持乾淨，除了當月。
-                        // 如果使用者不希望這樣，可以加個狀態判斷。目前先這樣確保"預設"行為。
                         setCollapsedMonths(newCollapsed);
                         
+                        // Auto-collapse history (collapse all except current month)
+                        setHistoryCollapsedMonths(newCollapsed);
+
                         setError('');
                     }
                 } catch (e) { console.error("Refresh failed:", e); }
@@ -237,15 +237,15 @@
                             setSlots(fetchedSlots);
                             setRequests(normalizeData(data.requests || []));
                             
-                            // 初始載入：收合非當月
-                            const groups = groupSlotsByMonth(fetchedSlots);
+                            const slotGroups = groupSlotsByMonth(fetchedSlots);
                             const today = new Date();
                             const currentMonthKey = `${today.getFullYear()}年 ${today.getMonth() + 1}月`;
                             const newCollapsed = {};
-                            groups.forEach(g => {
+                            slotGroups.forEach(g => {
                                 if (g.month !== currentMonthKey) newCollapsed[g.month] = true;
                             });
                             setCollapsedMonths(newCollapsed);
+                            setHistoryCollapsedMonths(newCollapsed);
                         }
                         setIsLoading(false);
                     }).catch(e => {
@@ -298,19 +298,51 @@
                 }));
             };
 
+            // Grouping for Requests (History)
+            const groupRequestsByMonth = (reqList) => {
+                 const groups = {};
+                 reqList.forEach(req => {
+                     const slot = slots.find(s => s.id == req.slotId);
+                     if(!slot) return;
+                     const d = new Date(slot.date);
+                     if (isNaN(d.getTime())) return;
+                     const key = `${d.getFullYear()}年 ${d.getMonth() + 1}月`;
+                     if (!groups[key]) groups[key] = [];
+                     groups[key].push(req);
+                 });
+                 
+                 return Object.keys(groups).sort((a, b) => {
+                    const [y1, m1] = a.replace('年 ', '-').replace('月', '').split('-');
+                    const [y2, m2] = b.replace('年 ', '-').replace('月', '').split('-');
+                    return new Date(y2, m2 - 1) - new Date(y1, m1 - 1); // Reverse sort for history (newest first)
+                }).map(key => ({
+                    month: key,
+                    items: groups[key].sort((a, b) => {
+                        const slotA = slots.find(s => s.id == a.slotId);
+                        const slotB = slots.find(s => s.id == b.slotId);
+                        if(!slotA || !slotB) return 0;
+                        const dateA = slotA.date + (a.startTime || slotA.startTime);
+                        const dateB = slotB.date + (b.startTime || slotB.startTime);
+                        return dateB.localeCompare(dateA); // Newest items first in history
+                    })
+                }));
+            };
+
+
             const toggleMonthCollapse = (month) => {
                 setCollapsedMonths(prev => ({ ...prev, [month]: !prev[month] }));
+            };
+            
+            const toggleHistoryMonthCollapse = (month) => {
+                setHistoryCollapsedMonths(prev => ({ ...prev, [month]: !prev[month] }));
             };
 
             // --- Handlers ---
 
             const handleSaveSlot = async (e) => {
                 e.preventDefault();
-                
                 const originalSlots = [...slots];
-                
                 if (editingSlotId) {
-                    // Update Mode (Single Slot)
                     const updatedSlot = { 
                         ...newSlot, 
                         id: editingSlotId,
@@ -329,9 +361,7 @@
                         setSlots(originalSlots);
                     }
                 } else {
-                    // Add Mode (Supports Range)
                     const dates = getDatesInRange(newSlot.startDate, newSlot.endDate || newSlot.startDate);
-                    
                     const newSlotsData = dates.map(d => ({
                         date: d,
                         startTime: newSlot.startTime,
@@ -340,15 +370,11 @@
                         type: newSlot.type,
                         id: Date.now() + Math.random()
                     }));
-                    
                     setSlots(prev => [...prev, ...newSlotsData]);
                     setNewSlot({ startDate: '', endDate: '', startTime: '09:00', endTime: '10:00', note: '', type: 'available' });
                     setShowAddSlot(false);
-
                     try {
-                        for (const slotData of newSlotsData) {
-                            await callApi('addSlot', slotData, false);
-                        }
+                        for (const slotData of newSlotsData) { await callApi('addSlot', slotData, false); }
                     } catch (err) {
                         alert("部分新增失敗，請重新整理確認");
                         refreshData();
@@ -372,20 +398,12 @@
             const handleDeleteSlot = async (id) => {
                 if (!id) return;
                 if (!confirm('確定刪除此時段？將一併刪除該時段下所有會議。')) return;
-                
                 const originalSlots = [...slots];
                 const originalRequests = [...requests];
-
                 setSlots(prev => prev.filter(s => s.id !== id));
                 setRequests(prev => prev.filter(r => r.slotId !== id));
-
-                try {
-                    await callApi('deleteSlot', { id }, false);
-                } catch (err) {
-                    alert("刪除失敗: " + err.message);
-                    setSlots(originalSlots);
-                    setRequests(originalRequests);
-                }
+                try { await callApi('deleteSlot', { id }, false); }
+                catch (err) { alert("刪除失敗: " + err.message); setSlots(originalSlots); setRequests(originalRequests); }
             };
 
             const isTimeOverlapping = (slotId, start, end) => {
@@ -400,46 +418,29 @@
                 }
                 const tempId = Date.now();
                 const reqData = { ...newRequest, id: tempId, slotId: parseInt(newRequest.slotId), step: 1, updatedAt: new Date().toISOString() };
-                
                 setRequests(prev => [...prev, reqData]);
                 setNewRequest({ title: '', slotId: '', requestorNote: '', requestorName: '依玲', startTime: '', endTime: '' });
                 setShowAddRequest(false);
                 setActiveTab('dashboard');
-
-                try {
-                    await callApi('addRequest', reqData, false);
-                } catch(err) {
-                    alert("新增失敗: " + err.message);
-                    setRequests(prev => prev.filter(r => r.id !== tempId));
-                }
+                try { await callApi('addRequest', reqData, false); }
+                catch(err) { alert("新增失敗: " + err.message); setRequests(prev => prev.filter(r => r.id !== tempId)); }
             };
 
             const handleUpdateStep = async (reqId, newStep) => {
                 const originalRequests = [...requests];
                 setRequests(prev => prev.map(r => r.id === reqId ? { ...r, step: newStep, updatedAt: new Date().toISOString() } : r));
-                try {
-                    await callApi('updateRequestStep', { id: reqId, step: newStep, updatedAt: new Date().toISOString() }, false);
-                } catch (err) {
-                    console.error("Update step failed", err);
-                    setRequests(originalRequests);
-                }
+                try { await callApi('updateRequestStep', { id: reqId, step: newStep, updatedAt: new Date().toISOString() }, false); }
+                catch (err) { console.error("Update step failed", err); setRequests(originalRequests); }
             };
 
             const handleDeleteRequest = async (id) => {
                 if (!confirm('確定取消此會議安排？')) return;
-                
                 const originalRequests = [...requests];
                 setRequests(prev => prev.filter(r => r.id !== id));
-
-                try {
-                    await callApi('deleteRequest', { id }, false);
-                } catch (err) {
-                    alert("刪除失敗: " + err.message);
-                    setRequests(originalRequests);
-                }
+                try { await callApi('deleteRequest', { id }, false); }
+                catch (err) { alert("刪除失敗: " + err.message); setRequests(originalRequests); }
             };
 
-            // Toggle Full Day - Set to 00:00 - 23:45 to match dropdown logic
             const toggleFullDay = () => {
                 if (newSlot.startTime === '00:00' && newSlot.endTime === '23:45') {
                     setNewSlot({ ...newSlot, startTime: '09:00', endTime: '10:00' });
@@ -497,6 +498,18 @@
             });
 
             const groupedSlots = groupSlotsByMonth(slots);
+            
+            const activeRequests = requests.filter(r => r.step < 4).sort((a, b) => {
+                const slotA = slots.find(s => s.id == a.slotId);
+                const slotB = slots.find(s => s.id == b.slotId);
+                if (!slotA || !slotB) return 0;
+                const dateA = slotA.date + (a.startTime || slotA.startTime);
+                const dateB = slotB.date + (b.startTime || slotB.startTime);
+                return dateA.localeCompare(dateB);
+            });
+            
+            const completedRequests = requests.filter(r => r.step === 4);
+            const groupedHistory = groupRequestsByMonth(completedRequests);
 
             return (
                 <div className="min-h-screen flex flex-col max-w-5xl mx-auto shadow-2xl rounded-none sm:rounded-[40px] my-0 sm:my-8 overflow-hidden bg-white/80 backdrop-blur border-4 border-white">
@@ -524,7 +537,7 @@
                             {['calendar', 'dashboard', 'slots'].map(tab => (
                                 <button key={tab} onClick={() => setActiveTab(tab)} className={`magic-btn px-6 py-3 font-bold flex items-center gap-2 whitespace-nowrap transition-all rounded-full shadow-sm border-2 ${activeTab === tab ? 'bg-sky-100 text-sky-600 border-sky-200' : 'bg-white text-slate-400 border-transparent hover:bg-slate-50'}`}>
                                     {tab === 'calendar' && <><Icons.Calendar size={18}/> 月曆</>}
-                                    {tab === 'dashboard' && <><Icons.List size={18}/> 追蹤 ({requests.filter(r => r.step < 4).length})</>}
+                                    {tab === 'dashboard' && <><Icons.List size={18}/> 追蹤</>}
                                     {tab === 'slots' && <><Icons.Clock size={18}/> 列表</>}
                                 </button>
                             ))}
@@ -643,44 +656,104 @@
                         )}
 
                         {activeTab === 'dashboard' && (
-                            <div className="grid gap-4">
-                                <div className="flex justify-between items-center bg-white p-5 rounded-[24px] border-2 border-sky-100 shadow-sm"><div><h2 className="font-bold text-sky-800 text-lg">會議看板</h2></div><button onClick={() => setShowAddRequest(true)} className="magic-btn bg-sky-500 text-white px-5 py-2.5 rounded-full text-sm font-bold flex gap-2 shadow-lg shadow-sky-200"><Icons.Plus size={18}/> 新增</button></div>
-                                {requests.sort((a, b) => {
-                                    const slotA = slots.find(s => s.id == a.slotId);
-                                    const slotB = slots.find(s => s.id == b.slotId);
-                                    if (!slotA || !slotB) return 0;
-                                    const dateA = slotA.date + (a.startTime || slotA.startTime);
-                                    const dateB = slotB.date + (b.startTime || slotB.startTime);
-                                    return dateA.localeCompare(dateB);
-                                }).map(req => {
-                                    const slotDate = getSlotDisplay(req.slotId).split(' ')[0];
-                                    return (
-                                        <div key={req.id} className={`bg-white rounded-[24px] shadow-sm border-2 p-5 relative overflow-hidden transition-all hover:shadow-md ${req.step===4?'border-emerald-100 bg-emerald-50/30':'border-white'}`}>
-                                            <div className={`absolute left-0 top-0 bottom-0 w-2 ${STEPS[req.step].color.split(' ')[0]}`}></div>
-                                            <div className="pl-4 flex flex-col sm:flex-row justify-between gap-4">
-                                                <div className="flex-1">
-                                                    <div className="flex items-center gap-3 mb-2">
-                                                        <span className={`text-[11px] px-3 py-1 rounded-full border font-bold flex items-center gap-1.5 ${STEPS[req.step].color}`}>{STEPS[req.step].icon} {STEPS[req.step].label}</span>
-                                                        <span className="text-xs text-slate-400 font-bold tabular-nums">{new Date(req.updatedAt).toLocaleDateString()}</span>
+                            <div className="space-y-6">
+                                <div className="flex justify-center mb-4 bg-white p-1 rounded-full shadow-sm border-2 border-sky-100 w-fit mx-auto">
+                                    <button 
+                                        onClick={() => setDashboardTab('active')} 
+                                        className={`px-6 py-2 rounded-full font-bold text-sm transition-all flex items-center gap-2 ${dashboardTab === 'active' ? 'bg-sky-500 text-white shadow-md' : 'text-slate-400 hover:bg-slate-50'}`}
+                                    >
+                                        <Icons.Fire size={16}/> 進行中
+                                    </button>
+                                    <button 
+                                        onClick={() => setDashboardTab('completed')} 
+                                        className={`px-6 py-2 rounded-full font-bold text-sm transition-all flex items-center gap-2 ${dashboardTab === 'completed' ? 'bg-emerald-500 text-white shadow-md' : 'text-slate-400 hover:bg-slate-50'}`}
+                                    >
+                                        <Icons.Archive size={16}/> 歷史歸檔
+                                    </button>
+                                </div>
+
+                                <div className="flex justify-between items-center bg-white p-5 rounded-[24px] border-2 border-sky-100 shadow-sm">
+                                    <div><h2 className="font-bold text-sky-800 text-lg">{dashboardTab === 'active' ? '待辦會議看板' : '已完成歷史紀錄'}</h2></div>
+                                    <button onClick={() => setShowAddRequest(true)} className="magic-btn bg-sky-500 text-white px-5 py-2.5 rounded-full text-sm font-bold flex gap-2 shadow-lg shadow-sky-200"><Icons.Plus size={18}/> 新增</button>
+                                </div>
+
+                                {dashboardTab === 'active' && (
+                                    <div className="grid gap-4">
+                                        {activeRequests.map(req => {
+                                            const slotDate = getSlotDisplay(req.slotId).split(' ')[0];
+                                            return (
+                                                <div key={req.id} className="bg-white rounded-[24px] shadow-sm border-2 border-white p-5 relative overflow-hidden transition-all hover:shadow-md">
+                                                    <div className={`absolute left-0 top-0 bottom-0 w-2 ${STEPS[req.step].color.split(' ')[0]}`}></div>
+                                                    <div className="pl-4 flex flex-col sm:flex-row justify-between gap-4">
+                                                        <div className="flex-1">
+                                                            <div className="flex items-center gap-3 mb-2">
+                                                                <span className={`text-[11px] px-3 py-1 rounded-full border font-bold flex items-center gap-1.5 ${STEPS[req.step].color}`}>{STEPS[req.step].icon} {STEPS[req.step].label}</span>
+                                                                <span className="text-xs text-slate-400 font-bold tabular-nums">{new Date(req.updatedAt).toLocaleDateString()}</span>
+                                                            </div>
+                                                            <h3 className="font-extrabold text-lg mb-2 text-slate-700">{req.title}</h3>
+                                                            <div className="text-sm text-slate-500 flex flex-wrap items-center gap-4 bg-slate-50 p-2 rounded-xl inline-flex mb-2">
+                                                                <span className="flex items-center gap-1"><Icons.User size={14} className="text-pink-400"/> <b>{req.requestorName}</b></span>
+                                                                <span className="text-slate-300">|</span>
+                                                                <span className="flex items-center gap-1 tabular-nums"><Icons.Calendar size={14} className="text-sky-400"/> <b>{slotDate} {WEEKDAYS_SIMPLE[new Date(slotDate).getUTCDay()]} {req.startTime}-{req.endTime}</b></span>
+                                                            </div>
+                                                            {req.requestorNote && <div className="text-xs text-slate-500 mt-2 bg-slate-50 p-2 rounded-lg border border-slate-100 flex gap-2"><span className="font-bold text-slate-400">備註:</span> {req.requestorNote}</div>}
+                                                        </div>
+                                                        <div className="flex items-end gap-2">
+                                                            {req.step<4 && <button onClick={()=>handleUpdateStep(req.id, req.step+1)} disabled={isLoading} className="magic-btn bg-slate-800 text-white text-xs px-4 py-2 rounded-full flex items-center gap-1.5 font-bold shadow-lg shadow-slate-300/50 hover:bg-slate-700">下一步 <Icons.ArrowRight size={12}/></button>}
+                                                            {req.step>1 && <button onClick={()=>handleUpdateStep(req.id, req.step-1)} disabled={isLoading} className="text-slate-400 hover:text-slate-600 text-xs px-3 font-bold underline">返回</button>}
+                                                            <button onClick={()=>handleDeleteRequest(req.id)} disabled={isLoading} className="magic-btn text-rose-300 hover:text-rose-500 p-2 bg-rose-50 rounded-full ml-2"><Icons.Trash2 size={18}/></button>
+                                                        </div>
                                                     </div>
-                                                    <h3 className={`font-extrabold text-lg mb-2 ${req.step===4?'text-emerald-700':'text-slate-700'}`}>{req.title}</h3>
-                                                    <div className="text-sm text-slate-500 flex flex-wrap items-center gap-4 bg-slate-50 p-2 rounded-xl inline-flex mb-2">
-                                                        <span className="flex items-center gap-1"><Icons.User size={14} className="text-pink-400"/> <b>{req.requestorName}</b></span>
-                                                        <span className="text-slate-300">|</span>
-                                                        <span className="flex items-center gap-1 tabular-nums"><Icons.Calendar size={14} className="text-sky-400"/> <b>{slotDate} {WEEKDAYS_SIMPLE[new Date(slotDate).getUTCDay()]} {req.startTime}-{req.endTime}</b></span>
+                                                </div>
+                                            );
+                                        })}
+                                        {activeRequests.length===0 && <div className="text-center py-12 text-slate-400 border-2 border-dashed border-sky-200 bg-white/50 rounded-[30px] font-bold flex flex-col items-center gap-2"><Icons.Carriage size={48} className="text-sky-200 mb-2"/>沒有待辦事項，可以休息一下 ✨</div>}
+                                    </div>
+                                )}
+
+                                {dashboardTab === 'completed' && (
+                                    <div className="space-y-6">
+                                        {groupedHistory.map(group => (
+                                            <div key={group.month} className="magic-card rounded-[32px] overflow-hidden shadow-lg shadow-emerald-50/50 transition-all">
+                                                <div 
+                                                    className="bg-gradient-to-r from-emerald-50 to-white p-4 px-6 flex justify-between items-center cursor-pointer hover:bg-emerald-100 transition-colors sticky-group-header"
+                                                    onClick={() => toggleHistoryMonthCollapse(group.month)}
+                                                >
+                                                    <h3 className="font-extrabold text-emerald-800 text-lg flex items-center gap-2"><Icons.Calendar size={20}/> {group.month}</h3>
+                                                    <div className="text-emerald-400">{historyCollapsedMonths[group.month] ? <Icons.ChevronDown size={20}/> : <Icons.ChevronUp size={20}/>}</div>
+                                                </div>
+                                                {!historyCollapsedMonths[group.month] && (
+                                                    <div className="p-4 grid gap-3 bg-white/50">
+                                                        {group.items.map(req => {
+                                                            const slotDate = getSlotDisplay(req.slotId).split(' ')[0];
+                                                            return (
+                                                                <div key={req.id} className="bg-white border border-emerald-100 rounded-2xl p-4 flex items-center gap-4 shadow-sm hover:shadow-md transition-all group">
+                                                                    <div className="flex flex-col items-center justify-center bg-emerald-50 rounded-xl p-2 min-w-[100px] border border-emerald-100">
+                                                                        <span className="text-xs font-bold text-emerald-800 tabular-nums tracking-wide">{slotDate}</span>
+                                                                        <span className="text-[10px] font-bold text-emerald-500 my-0.5">{WEEKDAYS_SIMPLE[new Date(slotDate).getUTCDay()]}</span>
+                                                                        <span className="text-xs font-bold text-emerald-700 tabular-nums">{req.startTime}-{req.endTime}</span>
+                                                                    </div>
+                                                                    <div className="flex-1 min-w-0 py-1">
+                                                                        <h4 className="font-bold text-slate-700 text-lg truncate">{req.title}</h4>
+                                                                        <div className="flex items-center gap-4 mt-1 text-xs text-slate-500">
+                                                                            <span className="flex items-center gap-1"><Icons.User size={12} className="text-emerald-300"/> {req.requestorName}</span>
+                                                                            {req.requestorNote && <span className="truncate border-l-2 border-slate-100 pl-2 text-slate-400">{req.requestorNote}</span>}
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <div className="hidden sm:flex bg-emerald-100 text-emerald-600 px-3 py-1 rounded-full text-xs font-bold items-center gap-1"><Icons.CheckCircle size={12}/> 完成</div>
+                                                                        <button onClick={()=>handleDeleteRequest(req.id)} className="text-slate-300 hover:text-rose-500 p-2 rounded-full hover:bg-rose-50 transition-colors opacity-0 group-hover:opacity-100"><Icons.Trash2 size={16}/></button>
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
                                                     </div>
-                                                    {req.requestorNote && <div className="text-xs text-slate-500 mt-2 bg-slate-50 p-2 rounded-lg border border-slate-100 flex gap-2"><span className="font-bold text-slate-400">備註:</span> {req.requestorNote}</div>}
-                                                </div>
-                                                <div className="flex items-end gap-2">
-                                                    {req.step<4 ? <button onClick={()=>handleUpdateStep(req.id, req.step+1)} disabled={isLoading} className="magic-btn bg-slate-800 text-white text-xs px-4 py-2 rounded-full flex items-center gap-1.5 font-bold shadow-lg shadow-slate-300/50 hover:bg-slate-700">下一步 <Icons.ArrowRight size={12}/></button> : <span className="bg-emerald-100 text-emerald-600 px-4 py-2 rounded-full text-xs font-bold flex items-center gap-1.5"><Icons.CheckCircle size={14}/> 完成</span>}
-                                                    {req.step>1 && req.step<4 && <button onClick={()=>handleUpdateStep(req.id, req.step-1)} disabled={isLoading} className="text-slate-400 hover:text-slate-600 text-xs px-3 font-bold underline">返回</button>}
-                                                    <button onClick={()=>handleDeleteRequest(req.id)} disabled={isLoading} className="magic-btn text-rose-300 hover:text-rose-500 p-2 bg-rose-50 rounded-full ml-2"><Icons.Trash2 size={18}/></button>
-                                                </div>
+                                                )}
                                             </div>
-                                        </div>
-                                    );
-                                })}
-                                {requests.length===0 && <div className="text-center py-12 text-slate-400 border-2 border-dashed border-sky-200 bg-white/50 rounded-[30px] font-bold flex flex-col items-center gap-2"><Icons.Carriage size={48} className="text-sky-200 mb-2"/>目前沒有魔法會議安排喔 ✨</div>}
+                                        ))}
+                                        {groupedHistory.length===0 && <div className="text-center py-12 text-slate-400 border-2 border-dashed border-slate-200 bg-white/50 rounded-[30px] font-bold">尚無歷史紀錄</div>}
+                                    </div>
+                                )}
                             </div>
                         )}
 
