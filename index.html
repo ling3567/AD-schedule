@@ -113,7 +113,6 @@
         };
         
         // --- 內建穩定版台灣節日資料庫 (2024-2030) ---
-        // 根據行政院人事行政總處行事曆規則設定
         const getHolidayName = (dateStr) => {
             const d = new Date(dateStr);
             const y = d.getFullYear();
@@ -129,32 +128,12 @@
 
             // 2. 年度特定節日 (含農曆對照與補假)
             const yearHolidays = {
-                // 2024 (民國113年)
                 2024: { '2-8': '小年夜', '2-9': '除夕', '2-10': '春節', '2-11': '初二', '2-12': '初三', '2-13': '初四', '2-14': '初五', '4-4': '兒童節/清明', '6-10': '端午節', '9-17': '中秋節' },
-                // 2025 (民國114年)
-                2025: { '1-1': '元旦', '1-27': '小年夜', '1-28': '除夕', '1-29': '春節', '1-30': '初二', '1-31': '初三', '2-28': '和平紀念日', '4-4': '兒童節/清明', '5-1': '勞動節', '5-31': '端午節', '10-6': '中秋節', '10-10': '國慶日' },
-                // 2026 (民國115年) - 精確設定
-                2026: { 
-                    '1-1': '元旦', 
-                    '2-16': '小年夜', '2-17': '除夕', '2-18': '春節', '2-19': '初二', '2-20': '初三', 
-                    '2-27': '和平紀念日(補)', 
-                    '2-28': '和平紀念日', 
-                    '4-3': '兒童節(補)', 
-                    '4-4': '兒童節', 
-                    '4-5': '清明節', 
-                    '4-6': '清明節(補)', 
-                    '5-1': '勞動節',
-                    '6-19': '端午節', 
-                    '9-25': '中秋節', 
-                    '10-9': '國慶日(補)', '10-10': '國慶日'
-                },
-                // 2027 (民國116年)
+                2025: { '1-27': '小年夜', '1-28': '除夕', '1-29': '春節', '1-30': '初二', '1-31': '初三', '4-4': '兒童節/清明', '5-31': '端午節', '10-6': '中秋節' },
+                2026: { '1-1': '元旦', '2-16': '小年夜', '2-17': '除夕', '2-18': '春節', '2-19': '初二', '2-20': '初三', '2-27': '和平紀念日(補)', '2-28': '和平紀念日', '4-3': '兒童節(補)', '4-4': '兒童節', '4-5': '清明節', '4-6': '清明節(補)', '5-1': '勞動節', '6-19': '端午節', '9-25': '中秋節', '10-9': '國慶日(補)', '10-10': '國慶日' },
                 2027: { '1-1': '元旦', '2-5': '除夕', '2-6': '春節', '2-7': '初二', '2-8': '初三', '2-28': '和平紀念日', '4-4': '兒童節', '4-5': '清明節', '5-1': '勞動節', '6-9': '端午節', '9-15': '中秋節', '10-10': '國慶日' },
-                // 2028 (民國117年)
                 2028: { '1-1': '元旦', '1-25': '除夕', '1-26': '春節', '1-27': '初二', '1-28': '初三', '2-28': '和平紀念日', '4-4': '兒童節/清明', '5-1': '勞動節', '5-28': '端午節', '10-3': '中秋節', '10-10': '國慶日' },
-                // 2029 (民國118年)
                 2029: { '1-1': '元旦', '2-12': '除夕', '2-13': '春節', '2-14': '初二', '2-15': '初三', '2-28': '和平紀念日', '4-4': '兒童節/清明', '5-1': '勞動節', '6-16': '端午節', '9-22': '中秋節', '10-10': '國慶日' },
-                // 2030 (民國119年)
                 2030: { '1-1': '元旦', '2-2': '除夕', '2-3': '春節', '2-4': '初二', '2-5': '初三', '2-28': '和平紀念日', '4-5': '兒童節/清明', '5-1': '勞動節', '6-5': '端午節', '9-12': '中秋節', '10-10': '國慶日' }
             };
 
@@ -454,15 +433,18 @@
                 catch (err) { alert("刪除失敗: " + err.message); setSlots(originalSlots); setRequests(originalRequests); }
             };
 
-            const isTimeOverlapping = (slotId, start, end) => {
-                const existingRequests = requests.filter(r => r.slotId === slotId);
-                return existingRequests.some(req => start < req.endTime && end > req.startTime);
+            const findOverlappingRequest = (slotId, start, end) => {
+                 const existingRequests = requests.filter(r => r.slotId == slotId); 
+                 return existingRequests.find(req => start < req.endTime && end > req.startTime);
             };
 
             const handleAddRequest = async (e) => {
                 e.preventDefault();
-                if (isTimeOverlapping(parseInt(newRequest.slotId), newRequest.startTime, newRequest.endTime)) {
-                    alert('無法新增：此時段與現有會議時間重疊！'); return;
+                const conflict = findOverlappingRequest(newRequest.slotId, newRequest.startTime, newRequest.endTime);
+                if (conflict) {
+                    const statusText = conflict.step === 4 ? "已歸檔" : "進行中";
+                    alert(`無法新增：此時段與【${conflict.title} (${statusText})】(${conflict.startTime}-${conflict.endTime}) 時間重疊！`);
+                    return;
                 }
                 const tempId = Date.now();
                 const reqData = { ...newRequest, id: tempId, slotId: parseInt(newRequest.slotId), step: 1, updatedAt: new Date().toISOString() };
@@ -629,7 +611,7 @@
                                                     <div className="flex-1"><TimeSelect value={newSlot.endTime} onChange={v => setNewSlot({...newSlot, endTime: v})} /></div>
                                                 </div>
                                                 <button type="button" onClick={toggleFullDay} className={`w-full px-4 py-3 rounded-2xl text-sm font-bold transition-all border-2 flex items-center justify-center gap-2 ${newSlot.startTime === '00:00' && newSlot.endTime === '23:45' ? 'bg-purple-100 text-purple-600 border-purple-200' : 'bg-white text-slate-400 border-slate-200 hover:bg-slate-50'}`}>
-                                                    <Icons.Star size={16}/> {newSlot.startTime === '00:00' && newSlot.endTime === '23:45' ? '全天時段' : '設為全天'}
+                                                    <Icons.Star size={16}/> {newSlot.startTime === '00:00' && newSlot.endTime === '23:45' ? '✨ 全天時段' : '設為全天'}
                                                 </button>
                                             </div>
                                         </div>
