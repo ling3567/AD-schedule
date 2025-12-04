@@ -120,13 +120,11 @@
             const day = d.getDate();
             const md = `${m}-${day}`;
 
-            // 1. 國曆固定節日
             if (md === '1-1') return '元旦';
             if (md === '2-28') return '和平紀念日';
             if (md === '5-1') return '勞動節';
             if (md === '10-10') return '國慶日';
 
-            // 2. 年度特定節日 (含農曆對照與補假)
             const yearHolidays = {
                 2024: { '2-8': '小年夜', '2-9': '除夕', '2-10': '春節', '2-11': '初二', '2-12': '初三', '2-13': '初四', '2-14': '初五', '4-4': '兒童節/清明', '6-10': '端午節', '9-17': '中秋節' },
                 2025: { '1-27': '小年夜', '1-28': '除夕', '1-29': '春節', '1-30': '初二', '1-31': '初三', '4-4': '兒童節/清明', '5-31': '端午節', '10-6': '中秋節' },
@@ -136,11 +134,7 @@
                 2029: { '1-1': '元旦', '2-12': '除夕', '2-13': '春節', '2-14': '初二', '2-15': '初三', '2-28': '和平紀念日', '4-4': '兒童節/清明', '5-1': '勞動節', '6-16': '端午節', '9-22': '中秋節', '10-10': '國慶日' },
                 2030: { '1-1': '元旦', '2-2': '除夕', '2-3': '春節', '2-4': '初二', '2-5': '初三', '2-28': '和平紀念日', '4-5': '兒童節/清明', '5-1': '勞動節', '6-5': '端午節', '9-12': '中秋節', '10-10': '國慶日' }
             };
-
-            if (yearHolidays[y] && yearHolidays[y][md]) {
-                return yearHolidays[y][md];
-            }
-            
+            if (yearHolidays[y] && yearHolidays[y][md]) return yearHolidays[y][md];
             return null;
         };
 
@@ -175,11 +169,14 @@
             const [newSlot, setNewSlot] = useState({ startDate: '', endDate: '', startTime: '09:00', endTime: '10:00', note: '', type: 'available' });
             const [newRequest, setNewRequest] = useState({ title: '', slotId: '', requestorNote: '', requestorName: '依玲', startTime: '', endTime: '' });
 
-            // --- Normalization ---
+            // --- Normalization (Strict) ---
             const normalizeData = (list) => {
                 if (!Array.isArray(list)) return [];
                 return list.map(item => {
                     let newItem = { ...item };
+                    if(newItem.id) newItem.id = String(newItem.id);
+                    if(newItem.slotId) newItem.slotId = String(newItem.slotId);
+
                     if (newItem.date) {
                         try {
                             const d = new Date(newItem.date);
@@ -191,20 +188,23 @@
                             }
                         } catch (e) { console.error("Date parse error", e); }
                     }
+
                     const fixTime = (t) => {
                         if (!t) return '';
-                        if (typeof t === 'string' && t.includes('T') && t.includes('Z')) {
-                            const d = new Date(t);
+                        let str = String(t);
+                        if (str.includes('T') && str.includes('Z')) {
+                            const d = new Date(str);
                             if (!isNaN(d.getTime())) {
                                 return d.toLocaleTimeString('sv-SE', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit' });
                             }
                         }
-                        let str = String(t);
-                        if (str.includes(':') && str.length >= 5) {
-                            return str.substring(0, 5);
+                        const parts = str.split(':');
+                        if(parts.length >= 2) {
+                            return `${parts[0].padStart(2, '0')}:${parts[1].padStart(2, '0').substring(0,2)}`;
                         }
                         return str;
                     };
+
                     if (newItem.startTime) newItem.startTime = fixTime(newItem.startTime);
                     if (newItem.endTime) newItem.endTime = fixTime(newItem.endTime);
                     return newItem;
@@ -241,7 +241,6 @@
                         setSlots(fetchedSlots);
                         setRequests(normalizeData(data.requests || []));
                         
-                        // Auto-collapse
                         const slotGroups = groupSlotsByMonth(fetchedSlots);
                         const today = new Date();
                         const currentMonthKey = `${today.getFullYear()}年 ${today.getMonth() + 1}月`;
@@ -365,60 +364,30 @@
             };
 
             // --- Handlers ---
-
             const handleSaveSlot = async (e) => {
                 e.preventDefault();
                 const originalSlots = [...slots];
                 if (editingSlotId) {
-                    const updatedSlot = { 
-                        ...newSlot, 
-                        id: editingSlotId,
-                        date: newSlot.startDate 
-                    };
-                    
+                    const updatedSlot = { ...newSlot, id: editingSlotId, date: newSlot.startDate };
                     setSlots(prev => prev.map(s => s.id === editingSlotId ? updatedSlot : s));
                     setNewSlot({ startDate: '', endDate: '', startTime: '09:00', endTime: '10:00', note: '', type: 'available' });
                     setEditingSlotId(null);
                     setShowAddSlot(false);
-
-                    try {
-                        await callApi('updateSlot', updatedSlot, false);
-                    } catch (err) {
-                        alert("修改失敗: " + err.message);
-                        setSlots(originalSlots);
-                    }
+                    try { await callApi('updateSlot', updatedSlot, false); } 
+                    catch (err) { alert("修改失敗: " + err.message); setSlots(originalSlots); }
                 } else {
                     const dates = getDatesInRange(newSlot.startDate, newSlot.endDate || newSlot.startDate);
-                    const newSlotsData = dates.map(d => ({
-                        date: d,
-                        startTime: newSlot.startTime,
-                        endTime: newSlot.endTime,
-                        note: newSlot.note,
-                        type: newSlot.type,
-                        id: Date.now() + Math.random()
-                    }));
+                    const newSlotsData = dates.map(d => ({ date: d, startTime: newSlot.startTime, endTime: newSlot.endTime, note: newSlot.note, type: newSlot.type, id: String(Date.now() + Math.random()) }));
                     setSlots(prev => [...prev, ...newSlotsData]);
                     setNewSlot({ startDate: '', endDate: '', startTime: '09:00', endTime: '10:00', note: '', type: 'available' });
                     setShowAddSlot(false);
-                    try {
-                        for (const slotData of newSlotsData) { await callApi('addSlot', slotData, false); }
-                    } catch (err) {
-                        alert("部分新增失敗，請重新整理確認");
-                        refreshData();
-                    }
+                    try { for (const slotData of newSlotsData) { await callApi('addSlot', slotData, false); } } catch (err) { alert("部分新增失敗，請重新整理確認"); refreshData(); }
                 }
             };
 
             const handleEditSlot = (slot) => {
                 setEditingSlotId(slot.id);
-                setNewSlot({
-                    startDate: slot.date,
-                    endDate: slot.date, 
-                    startTime: slot.startTime,
-                    endTime: slot.endTime,
-                    note: slot.note,
-                    type: slot.type
-                });
+                setNewSlot({ startDate: slot.date, endDate: slot.date, startTime: slot.startTime, endTime: slot.endTime, note: slot.note, type: slot.type });
                 setShowAddSlot(true);
             };
 
@@ -433,21 +402,65 @@
                 catch (err) { alert("刪除失敗: " + err.message); setSlots(originalSlots); setRequests(originalRequests); }
             };
 
-            const findOverlappingRequest = (slotId, start, end) => {
-                 const existingRequests = requests.filter(r => r.slotId == slotId); 
-                 return existingRequests.find(req => start < req.endTime && end > req.startTime);
+            const timeToMinutes = (t) => {
+                if(!t) return 0;
+                const [h, m] = t.split(':').map(Number);
+                return h * 60 + m;
             };
+
+            // Calculate Status logic
+            const getSlotStatus = (slot) => {
+                 const slotReqs = requests.filter(r => r.slotId == slot.id);
+                 if (slotReqs.length === 0) return ''; // Empty
+
+                 const slotStart = timeToMinutes(slot.startTime);
+                 const slotEnd = timeToMinutes(slot.endTime);
+                 const duration = slotEnd - slotStart;
+                 
+                 // Calculate covered time by active/completed meetings
+                 // Simple calculation: sum of durations (assuming no overlaps between meetings)
+                 // In reality we should merge intervals but for this simple app sum is likely enough or we can do merge.
+                 // Let's do simple sum first.
+                 let totalCovered = 0;
+                 slotReqs.forEach(r => {
+                     const rs = Math.max(timeToMinutes(r.startTime), slotStart);
+                     const re = Math.min(timeToMinutes(r.endTime), slotEnd);
+                     if (re > rs) totalCovered += (re - rs);
+                 });
+
+                 if (totalCovered >= duration) return ' (時段已滿-協調中)';
+                 return ' (部分時段已滿)';
+            };
+            
+            const isFullyBooked = (slot) => {
+                const status = getSlotStatus(slot);
+                return status.includes('時段已滿');
+            };
+
+            // Show slot in dropdown if it is available AND not fully booked
+            const getAvailableSlots = () => slots.filter(s => s.type === 'available' && !isFullyBooked(s));
+
 
             const handleAddRequest = async (e) => {
                 e.preventDefault();
-                const conflict = findOverlappingRequest(newRequest.slotId, newRequest.startTime, newRequest.endTime);
+                // Conflict check needs to consider ALL requests (including completed ones)
+                const sTime = timeToMinutes(newRequest.startTime);
+                const eTime = timeToMinutes(newRequest.endTime);
+                
+                const conflict = requests.find(r => {
+                    if (r.slotId != newRequest.slotId) return false;
+                    const rStart = timeToMinutes(r.startTime);
+                    const rEnd = timeToMinutes(r.endTime);
+                    return sTime < rEnd && eTime > rStart;
+                });
+
                 if (conflict) {
                     const statusText = conflict.step === 4 ? "已歸檔" : "進行中";
                     alert(`無法新增：此時段與【${conflict.title} (${statusText})】(${conflict.startTime}-${conflict.endTime}) 時間重疊！`);
                     return;
                 }
-                const tempId = Date.now();
-                const reqData = { ...newRequest, id: tempId, slotId: parseInt(newRequest.slotId), step: 1, updatedAt: new Date().toISOString() };
+                const tempId = String(Date.now());
+                const reqData = { ...newRequest, id: tempId, slotId: String(newRequest.slotId), step: 1, updatedAt: new Date().toISOString() };
                 setRequests(prev => [...prev, reqData]);
                 setNewRequest({ title: '', slotId: '', requestorNote: '', requestorName: '依玲', startTime: '', endTime: '' });
                 setShowAddRequest(false);
@@ -520,12 +533,7 @@
             const getFirstDayOfMonth = (y, m) => new Date(y, m, 1).getDay();
             const getSlotDisplay = (id) => { const s = slots.find(x => x.id == id); return s ? `${s.date} ${s.startTime}-${s.endTime}` : '未知'; };
             const getRequestsBySlotId = (id) => requests.filter(r => r.slotId == id);
-            
-            // Allow selecting slots even if they have completed requests (so we can add more meetings to remaining time)
-            const getAvailableSlots = () => slots.filter(s => s.type === 'available');
-
             const groupedSlots = groupSlotsByMonth(slots);
-            
             const activeRequests = requests.filter(r => r.step < 4).sort((a, b) => {
                 const slotA = slots.find(s => s.id == a.slotId);
                 const slotB = slots.find(s => s.id == b.slotId);
@@ -534,7 +542,6 @@
                 const dateB = slotB.date + (b.startTime || slotB.startTime);
                 return dateA.localeCompare(dateB);
             });
-            
             const completedRequests = requests.filter(r => r.step === 4);
             const groupedHistory = groupRequestsByMonth(completedRequests);
 
@@ -631,7 +638,10 @@
                                 <div className="magic-card p-8 rounded-[40px] shadow-2xl max-w-md w-full animate-fade-in-down my-8">
                                     <h3 className="font-bold text-2xl mb-6 text-slate-700">新增會議安排</h3>
                                     <form onSubmit={handleAddRequest} className="space-y-5">
-                                        <div><label className="text-sm font-bold text-slate-500 ml-2 mb-1 block">選擇空檔</label><select className="w-full p-3 border-2 border-sky-100 rounded-2xl bg-sky-50/30 outline-none focus:border-pink-300 font-bold text-slate-700" value={newRequest.slotId} onChange={e=>{const s=slots.find(x=>x.id==e.target.value); if(s) setNewRequest({...newRequest, slotId: s.id, startTime:s.startTime, endTime:s.endTime});}} required><option value="">請選擇一個空檔</option>{getAvailableSlots().map(s=><option key={s.id} value={s.id}>{s.date} {s.startTime}-{s.endTime}</option>)}</select></div>
+                                        <div><label className="text-sm font-bold text-slate-500 ml-2 mb-1 block">選擇空檔</label><select className="w-full p-3 border-2 border-sky-100 rounded-2xl bg-sky-50/30 outline-none focus:border-pink-300 font-bold text-slate-700" value={newRequest.slotId} onChange={e=>{const s=slots.find(x=>x.id==e.target.value); if(s) setNewRequest({...newRequest, slotId: s.id, startTime:s.startTime, endTime:s.endTime});}} required><option value="">請選擇一個空檔 ✨</option>{getAvailableSlots().map(s=>{
+                                            const label = getSlotStatus(s);
+                                            return <option key={s.id} value={s.id}>{s.date} {s.startTime}-{s.endTime}{label}</option>
+                                        })}</select></div>
                                         {newRequest.slotId && <div className="p-4 bg-sky-50 rounded-3xl border-2 border-sky-100"><label className="text-xs font-bold text-sky-400 uppercase mb-2 block tracking-wider">會議時間</label><div className="flex gap-2 items-center"><TimeSelect value={newRequest.startTime} onChange={v=>setNewRequest({...newRequest, startTime:v})} className="flex-1"/><span className="text-sky-300 font-bold">-</span><TimeSelect value={newRequest.endTime} onChange={v=>setNewRequest({...newRequest, endTime:v})} className="flex-1"/></div></div>}
                                         <div><label className="text-sm font-bold text-slate-500 ml-2 mb-1 block">預約人</label><input type="text" className="w-full p-3 border-2 border-sky-100 rounded-2xl bg-sky-50/30 outline-none focus:border-pink-300 font-bold text-slate-700" value={newRequest.requestorName} onChange={e => setNewRequest({...newRequest, requestorName: e.target.value})} required/></div>
                                         <div><label className="text-sm font-bold text-slate-500 ml-2 mb-1 block">事項</label><input type="text" className="w-full p-3 border-2 border-sky-100 rounded-2xl bg-sky-50/30 outline-none focus:border-pink-300 font-bold text-slate-700" value={newRequest.title} onChange={e => setNewRequest({...newRequest, title: e.target.value})} required/></div>
