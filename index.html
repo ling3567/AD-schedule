@@ -111,6 +111,53 @@
             Carriage: (p) => <Icon {...p} viewBox="0 0 24 24" path={<><circle cx="12" cy="13" r="8"></circle><circle cx="5.5" cy="20.5" r="2.5"></circle><circle cx="18.5" cy="20.5" r="2.5"></circle><path d="M12,5V2"></path><path d="M12,13h.01"></path><path d="M5.5,13H3"></path><path d="M18.5,13H21"></path></>} />,
             Wand: (p) => <Icon {...p} path={<><path d="M14.5,9.5L2,22"></path><path d="M17,7l2-4l2,4l4,2l-4,2l-2,4l-2-4l-4-2L17,7z"></path></>} />
         };
+        
+        // --- 內建穩定版台灣節日資料庫 (2024-2030) ---
+        // 根據行政院人事行政總處行事曆規則設定
+        const getHolidayName = (dateStr) => {
+            const d = new Date(dateStr);
+            const y = d.getFullYear();
+            const m = d.getMonth() + 1;
+            const day = d.getDate();
+            const md = `${m}-${day}`;
+
+            // 2. 年度特定節日 (含農曆對照與補假)
+            const yearHolidays = {
+                // 2024 (民國113年)
+                2024: { '1-1': '元旦', '2-8': '小年夜', '2-9': '除夕', '2-10': '春節', '2-11': '初二', '2-12': '初三', '2-13': '初四', '2-14': '初五', '2-28': '和平紀念日', '4-4': '兒童節/清明', '5-1': '勞動節', '6-10': '端午節', '9-17': '中秋節', '10-10': '國慶日' },
+                // 2025 (民國114年)
+                2025: { '1-1': '元旦', '1-27': '小年夜', '1-28': '除夕', '1-29': '春節', '1-30': '初二', '1-31': '初三', '2-28': '和平紀念日', '4-4': '兒童節/清明', '5-1': '勞動節', '5-31': '端午節', '10-6': '中秋節', '10-10': '國慶日' },
+                // 2026 (民國115年) - 精確設定
+                2026: { 
+                    '1-1': '元旦', 
+                    '2-16': '小年夜', '2-17': '除夕', '2-18': '春節', '2-19': '初二', '2-20': '初三', 
+                    '2-27': '和平紀念日(補)', 
+                    '2-28': '和平紀念日', 
+                    '4-3': '兒童節(補)', 
+                    '4-4': '兒童節', 
+                    '4-5': '清明節', 
+                    '4-6': '清明節(補)', 
+                    '5-1': '勞動節',
+                    '6-19': '端午節', 
+                    '9-25': '中秋節', 
+                    '10-9': '國慶日(補)', '10-10': '國慶日'
+                },
+                // 2027 (民國116年)
+                2027: { '1-1': '元旦', '2-5': '除夕', '2-6': '春節', '2-7': '初二', '2-8': '初三', '2-28': '和平紀念日', '4-4': '兒童節', '4-5': '清明節', '5-1': '勞動節', '6-9': '端午節', '9-15': '中秋節', '10-10': '國慶日' },
+                // 2028 (民國117年)
+                2028: { '1-1': '元旦', '1-25': '除夕', '1-26': '春節', '1-27': '初二', '1-28': '初三', '2-28': '和平紀念日', '4-4': '兒童節/清明', '5-1': '勞動節', '5-28': '端午節', '10-3': '中秋節', '10-10': '國慶日' },
+                // 2029 (民國118年)
+                2029: { '1-1': '元旦', '2-12': '除夕', '2-13': '春節', '2-14': '初二', '2-15': '初三', '2-28': '和平紀念日', '4-4': '兒童節/清明', '5-1': '勞動節', '6-16': '端午節', '9-22': '中秋節', '10-10': '國慶日' },
+                // 2030 (民國119年)
+                2030: { '1-1': '元旦', '2-2': '除夕', '2-3': '春節', '2-4': '初二', '2-5': '初三', '2-28': '和平紀念日', '4-5': '兒童節/清明', '5-1': '勞動節', '6-5': '端午節', '9-12': '中秋節', '10-10': '國慶日' }
+            };
+
+            if (yearHolidays[y] && yearHolidays[y][md]) {
+                return yearHolidays[y][md];
+            }
+            
+            return null;
+        };
 
         const { useState, useEffect } = React;
 
@@ -126,7 +173,7 @@
             
             // UI
             const [activeTab, setActiveTab] = useState('calendar');
-            const [dashboardTab, setDashboardTab] = useState('active'); // 'active' | 'completed'
+            const [dashboardTab, setDashboardTab] = useState('active'); 
             const [showAddSlot, setShowAddSlot] = useState(false);
             const [showAddRequest, setShowAddRequest] = useState(false);
             const [showSettings, setShowSettings] = useState(false);
@@ -135,12 +182,11 @@
             // Editing State
             const [editingSlotId, setEditingSlotId] = useState(null);
             
-            // Grouping State (Months collapsed/expanded)
+            // Grouping State
             const [collapsedMonths, setCollapsedMonths] = useState({});
             const [historyCollapsedMonths, setHistoryCollapsedMonths] = useState({});
 
             // Forms
-            // startDate, endDate for Range support
             const [newSlot, setNewSlot] = useState({ startDate: '', endDate: '', startTime: '09:00', endTime: '10:00', note: '', type: 'available' });
             const [newRequest, setNewRequest] = useState({ title: '', slotId: '', requestorNote: '', requestorName: '依玲', startTime: '', endTime: '' });
 
@@ -210,7 +256,7 @@
                         setSlots(fetchedSlots);
                         setRequests(normalizeData(data.requests || []));
                         
-                        // Auto-collapse slots list (collapse all except current month)
+                        // Auto-collapse
                         const slotGroups = groupSlotsByMonth(fetchedSlots);
                         const today = new Date();
                         const currentMonthKey = `${today.getFullYear()}年 ${today.getMonth() + 1}月`;
@@ -219,8 +265,6 @@
                              if (g.month !== currentMonthKey) newCollapsed[g.month] = true;
                         });
                         setCollapsedMonths(newCollapsed);
-                        
-                        // Auto-collapse history (collapse all except current month)
                         setHistoryCollapsedMonths(newCollapsed);
 
                         setError('');
@@ -268,7 +312,7 @@
                 const dt = new Date(start);
                 const endDate = new Date(end);
                 while (dt <= endDate) {
-                    arr.push(new Date(dt).toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' })); // YYYY-MM-DD
+                    arr.push(new Date(dt).toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' }));
                     dt.setDate(dt.getDate() + 1);
                 }
                 return arr;
@@ -298,7 +342,6 @@
                 }));
             };
 
-            // Grouping for Requests (History)
             const groupRequestsByMonth = (reqList) => {
                  const groups = {};
                  reqList.forEach(req => {
@@ -314,7 +357,7 @@
                  return Object.keys(groups).sort((a, b) => {
                     const [y1, m1] = a.replace('年 ', '-').replace('月', '').split('-');
                     const [y2, m2] = b.replace('年 ', '-').replace('月', '').split('-');
-                    return new Date(y2, m2 - 1) - new Date(y1, m1 - 1); // Reverse sort for history (newest first)
+                    return new Date(y2, m2 - 1) - new Date(y1, m1 - 1); 
                 }).map(key => ({
                     month: key,
                     items: groups[key].sort((a, b) => {
@@ -323,11 +366,10 @@
                         if(!slotA || !slotB) return 0;
                         const dateA = slotA.date + (a.startTime || slotA.startTime);
                         const dateB = slotB.date + (b.startTime || slotB.startTime);
-                        return dateB.localeCompare(dateA); // Newest items first in history
+                        return dateA.localeCompare(dateB);
                     })
                 }));
             };
-
 
             const toggleMonthCollapse = (month) => {
                 setCollapsedMonths(prev => ({ ...prev, [month]: !prev[month] }));
@@ -584,7 +626,7 @@
                                                     <div className="flex-1"><TimeSelect value={newSlot.endTime} onChange={v => setNewSlot({...newSlot, endTime: v})} /></div>
                                                 </div>
                                                 <button type="button" onClick={toggleFullDay} className={`w-full px-4 py-3 rounded-2xl text-sm font-bold transition-all border-2 flex items-center justify-center gap-2 ${newSlot.startTime === '00:00' && newSlot.endTime === '23:45' ? 'bg-purple-100 text-purple-600 border-purple-200' : 'bg-white text-slate-400 border-slate-200 hover:bg-slate-50'}`}>
-                                                    <Icons.Star size={16}/> {newSlot.startTime === '00:00' && newSlot.endTime === '23:45' ? '✨ 全天時段' : '設為全天'}
+                                                    <Icons.Star size={16}/> {newSlot.startTime === '00:00' && newSlot.endTime === '23:45' ? '全天時段' : '設為全天'}
                                                 </button>
                                             </div>
                                         </div>
@@ -604,7 +646,7 @@
                                 <div className="magic-card p-8 rounded-[40px] shadow-2xl max-w-md w-full animate-fade-in-down my-8">
                                     <h3 className="font-bold text-2xl mb-6 text-slate-700">新增會議安排</h3>
                                     <form onSubmit={handleAddRequest} className="space-y-5">
-                                        <div><label className="text-sm font-bold text-slate-500 ml-2 mb-1 block">選擇空檔</label><select className="w-full p-3 border-2 border-sky-100 rounded-2xl bg-sky-50/30 outline-none focus:border-pink-300 font-bold text-slate-700" value={newRequest.slotId} onChange={e=>{const s=slots.find(x=>x.id==e.target.value); if(s) setNewRequest({...newRequest, slotId: s.id, startTime:s.startTime, endTime:s.endTime});}} required><option value="">請選擇一個空檔 ✨</option>{getAvailableSlots().map(s=><option key={s.id} value={s.id}>{s.date} {s.startTime}-{s.endTime}</option>)}</select></div>
+                                        <div><label className="text-sm font-bold text-slate-500 ml-2 mb-1 block">選擇空檔</label><select className="w-full p-3 border-2 border-sky-100 rounded-2xl bg-sky-50/30 outline-none focus:border-pink-300 font-bold text-slate-700" value={newRequest.slotId} onChange={e=>{const s=slots.find(x=>x.id==e.target.value); if(s) setNewRequest({...newRequest, slotId: s.id, startTime:s.startTime, endTime:s.endTime});}} required><option value="">請選擇一個空檔</option>{getAvailableSlots().map(s=><option key={s.id} value={s.id}>{s.date} {s.startTime}-{s.endTime}</option>)}</select></div>
                                         {newRequest.slotId && <div className="p-4 bg-sky-50 rounded-3xl border-2 border-sky-100"><label className="text-xs font-bold text-sky-400 uppercase mb-2 block tracking-wider">會議時間</label><div className="flex gap-2 items-center"><TimeSelect value={newRequest.startTime} onChange={v=>setNewRequest({...newRequest, startTime:v})} className="flex-1"/><span className="text-sky-300 font-bold">-</span><TimeSelect value={newRequest.endTime} onChange={v=>setNewRequest({...newRequest, endTime:v})} className="flex-1"/></div></div>}
                                         <div><label className="text-sm font-bold text-slate-500 ml-2 mb-1 block">預約人</label><input type="text" className="w-full p-3 border-2 border-sky-100 rounded-2xl bg-sky-50/30 outline-none focus:border-pink-300 font-bold text-slate-700" value={newRequest.requestorName} onChange={e => setNewRequest({...newRequest, requestorName: e.target.value})} required/></div>
                                         <div><label className="text-sm font-bold text-slate-500 ml-2 mb-1 block">事項</label><input type="text" className="w-full p-3 border-2 border-sky-100 rounded-2xl bg-sky-50/30 outline-none focus:border-pink-300 font-bold text-slate-700" value={newRequest.title} onChange={e => setNewRequest({...newRequest, title: e.target.value})} required/></div>
@@ -630,10 +672,15 @@
                                         const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth()+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
                                         const isToday = new Date().toDateString() === new Date(currentDate.getFullYear(), currentDate.getMonth(), day).toDateString();
                                         const daySlots = slots.filter(s => s.date === dateStr).sort((a,b) => a.startTime.localeCompare(b.startTime));
+                                        const holiday = getHolidayName(dateStr);
+
                                         return (
                                             <div key={day} className={`min-h-[120px] border-b border-r border-purple-50 p-2 relative hover:bg-sky-50 transition-colors group ${isToday ? 'bg-pink-50/50' : ''}`}>
-                                                <div className="flex justify-between mb-2">
-                                                    <span className={`text-sm font-bold w-8 h-8 flex items-center justify-center rounded-full ${isToday?'bg-gradient-to-tr from-pink-400 to-rose-400 text-white shadow-md shadow-pink-200':'text-slate-600'}`}>{day}</span>
+                                                <div className="flex justify-between mb-2 items-start">
+                                                    <div className="flex flex-col items-center">
+                                                        <span className={`text-sm font-bold w-8 h-8 flex items-center justify-center rounded-full ${isToday?'bg-gradient-to-tr from-pink-400 to-rose-400 text-white shadow-md shadow-pink-200': holiday ? 'text-rose-500' : 'text-slate-600'}`}>{day}</span>
+                                                        {holiday && <span className="text-[10px] font-bold text-rose-500 bg-rose-50 px-1 rounded mt-0.5">{holiday}</span>}
+                                                    </div>
                                                     {daySlots.length===0 && <button onClick={()=>{setNewSlot({...newSlot, startDate: dateStr, endDate: dateStr}); setShowAddSlot(true);}} className="hidden group-hover:flex w-8 h-8 items-center justify-center text-emerald-400 bg-emerald-50 rounded-full hover:bg-emerald-100 transition-all"><Icons.Plus size={18}/></button>}
                                                 </div>
                                                 <div className="space-y-1.5">
